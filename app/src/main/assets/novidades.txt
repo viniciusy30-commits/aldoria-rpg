@@ -1,0 +1,10 @@
+#id 2026-10-07-a
+#titulo Primeira versão de Aldoria
+- Você é um Mago em Aldoria, uma cidade protegida cercada de campos, florestas e lagos. Tudo é desenhado no próprio app, em pixel art.
+- Controle: direcional na esquerda, toque no mapa para andar, toque em um monstro para mirar. O botão de mira escolhe o monstro mais perto.
+- Seis magias na direita: Exura (cura), Exori flam (golpe de fogo), Exori vis (golpe de energia), Exevo flam hur (onda de fogo), Utani hur (velocidade) e Utamo vita (escudo mágico). Algumas abrem em níveis mais altos.
+- Seu cajado ataca sozinho o monstro mirado, de graça. Cada magia gasta mana e treina o nível mágico.
+- O Rato anda pelos campos, persegue você, morre e deixa um corpo: toque no corpo para pegar o loot (moedas de ouro e queijo).
+- Experiência, níveis, vida e mana como no Tibia. Morrer custa 10% da experiência e você volta ao templo.
+- Mochila e tela do personagem, lista de batalha, minimapa, mensagens do jogo e salvamento automático.
+- Atualize pelo próprio app: botão "Verificar atualização" no menu inicial.

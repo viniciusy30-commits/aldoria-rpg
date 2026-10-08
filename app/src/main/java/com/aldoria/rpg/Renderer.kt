@@ -1,0 +1,1085 @@
+package com.aldoria.rpg
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
+import android.graphics.RadialGradient
+import android.graphics.RectF
+import android.graphics.Shader
+import android.graphics.Typeface
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sin
+
+object Ui {
+    const val NONE = 0
+    const val BLOCK = 1
+    const val MENU = 2
+    const val BAG = 3
+    const val TARGET = 4
+    const val SPELL0 = 10
+    const val BATTLE0 = 20
+    const val MENU_CONT = 30
+    const val MENU_SAVE = 31
+    const val MENU_EXIT = 32
+    const val BAG_CLOSE = 40
+    const val TAB_BAG = 41
+    const val TAB_CHAR = 42
+    const val USE = 43
+    const val RESPAWN = 50
+    const val ITEM0 = 100
+}
+
+class Hit(val id: Int, val l: Float, val t: Float, val r: Float, val b: Float)
+
+class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) {
+    var w = 0
+    var h = 0
+    var tile = 64
+    var camX = 0f
+    var camY = 0f
+    var joyCx = 0f
+    var joyCy = 0f
+    var joyR = 0f
+
+    val hits = ArrayList<Hit>()
+    val battleList = ArrayList<Monster>()
+    val itemKeys = ArrayList<String>()
+    private var modalStart = -1
+
+    private var tiles: Array<Array<Bitmap>>? = null
+    private var mageB: Array<Array<Bitmap>>? = null
+    private var ratB: Array<Array<Bitmap>>? = null
+    private var ratDeadB: Bitmap? = null
+    private var miniB: Bitmap? = null
+    private var vig: RadialGradient? = null
+
+    private val p = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val tp = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bp = Paint()
+    private val flashP = Paint()
+    private val rect = RectF()
+    private val rect2 = RectF()
+    private val path = Path()
+    private val mono: Typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+
+    init {
+        tp.typeface = mono
+        flashP.colorFilter = PorterDuffColorFilter(Color.argb(170, 255, 70, 70), PorterDuff.Mode.SRC_ATOP)
+    }
+
+    fun onSize(nw: Int, nh: Int) {
+        w = nw
+        h = nh
+        var ts = ((h / 9f).toInt() / 16) * 16
+        if (ts < 32) ts = 32
+        if (ts != tile || tiles == null) {
+            tile = ts
+            tiles = Art.tiles(tile)
+            mageB = Art.mage(tile)
+            ratB = Art.rat(tile)
+            ratDeadB = Art.ratDead(tile)
+        }
+        if (miniB == null) miniB = buildMini()
+        vig = RadialGradient(
+            w / 2f, h / 2f, max(w, h) * 0.75f,
+            intArrayOf(0x00000000, 0x00000000, 0x88000000.toInt()),
+            floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP
+        )
+    }
+
+    private fun buildMini(): Bitmap {
+        val wd = g.world
+        val b = Bitmap.createBitmap(wd.w, wd.h, Bitmap.Config.ARGB_8888)
+        for (y in 0 until wd.h) {
+            for (x in 0 until wd.w) {
+                val col = when (wd.tiles[y * wd.w + x]) {
+                    Tl.WATER -> 0xFF2F6FD0.toInt()
+                    Tl.SAND -> 0xFFE3CC8B.toInt()
+                    Tl.GRASS, Tl.FLOWER -> 0xFF3F8531.toInt()
+                    Tl.TREE -> 0xFF1F5A24.toInt()
+                    Tl.BUSH -> 0xFF2E7A33.toInt()
+                    Tl.ROCK -> 0xFF7A7A82.toInt()
+                    Tl.DIRT -> 0xFF8A6A45.toInt()
+                    Tl.STONE -> 0xFFA0A0A8.toInt()
+                    Tl.WOOD -> 0xFF8A5C2D.toInt()
+                    Tl.WALL -> 0xFF5C4332.toInt()
+                    Tl.DOOR -> 0xFF6B4423.toInt()
+                    else -> 0xFF5BA0F0.toInt()
+                }
+                b.setPixel(x, y, col)
+            }
+        }
+        return b
+    }
+
+    // ------------------------------------------------------------------ toques
+
+    fun hit(x: Float, y: Float): Int {
+        val start = if (modalStart >= 0) modalStart else 0
+        var i = hits.size - 1
+        while (i >= start) {
+            val k = hits[i]
+            if (x >= k.l && x <= k.r && y >= k.t && y <= k.b) return k.id
+            i--
+        }
+        return if (modalStart >= 0) Ui.BLOCK else Ui.NONE
+    }
+
+    private fun addHit(id: Int, l: Float, t: Float, r: Float, b: Float) {
+        hits.add(Hit(id, l, t, r, b))
+    }
+
+    // ------------------------------------------------------------------ utilitários de desenho
+
+    private fun sxOf(wx: Float): Float = (wx - camX) * tile + w / 2f
+    private fun syOf(wy: Float): Float = (wy - camY) * tile + h / 2f
+
+    private fun txt(c: Canvas, s: String, x: Float, y: Float, size: Float, col: Int, align: Paint.Align) {
+        tp.textSize = size
+        tp.textAlign = align
+        tp.style = Paint.Style.STROKE
+        tp.strokeWidth = max(2f, size * 0.2f)
+        tp.color = 0xFF000000.toInt()
+        c.drawText(s, x, y, tp)
+        tp.style = Paint.Style.FILL
+        tp.color = col
+        c.drawText(s, x, y, tp)
+    }
+
+    private fun panel(c: Canvas, l: Float, t: Float, r: Float, b: Float) {
+        rect.set(l, t, r, b)
+        val rad = tile * 0.14f
+        p.style = Paint.Style.FILL
+        p.color = 0xD01B1410.toInt()
+        c.drawRoundRect(rect, rad, rad, p)
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = max(2f, tile * 0.035f)
+        p.color = 0xFF6B5236.toInt()
+        c.drawRoundRect(rect, rad, rad, p)
+        p.style = Paint.Style.FILL
+    }
+
+    private fun bar(c: Canvas, x: Float, y: Float, bw: Float, bh: Float, frac: Float, c1: Int, c2: Int, label: String) {
+        val f = if (frac < 0f) 0f else if (frac > 1f) 1f else frac
+        rect.set(x, y, x + bw, y + bh)
+        p.style = Paint.Style.FILL
+        p.color = 0xFF0E0A08.toInt()
+        c.drawRoundRect(rect, bh * 0.3f, bh * 0.3f, p)
+        if (f > 0f) {
+            rect2.set(x + 2f, y + 2f, x + 2f + (bw - 4f) * f, y + bh - 2f)
+            p.color = c1
+            c.drawRoundRect(rect2, bh * 0.25f, bh * 0.25f, p)
+            p.color = c2
+            rect2.set(x + 2f, y + 2f, x + 2f + (bw - 4f) * f, y + bh * 0.5f)
+            c.drawRoundRect(rect2, bh * 0.25f, bh * 0.25f, p)
+        }
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = 2f
+        p.color = 0xFF4A3A28.toInt()
+        c.drawRoundRect(rect, bh * 0.3f, bh * 0.3f, p)
+        p.style = Paint.Style.FILL
+        if (label.isNotEmpty()) txt(c, label, x + bw / 2f, y + bh * 0.76f, bh * 0.72f, COL_WHITE, Paint.Align.CENTER)
+    }
+
+    private fun hpColor(f: Float): Int =
+        if (f > 0.6f) 0xFF3CCB4A.toInt() else if (f > 0.3f) 0xFFE8C53A.toInt() else if (f > 0.1f) 0xFFE8802A.toInt() else 0xFFD93030.toInt()
+
+    private fun button(c: Canvas, cx: Float, cy: Float, r: Float, border: Int) {
+        p.style = Paint.Style.FILL
+        p.color = 0xCC1B1410.toInt()
+        c.drawCircle(cx, cy, r, p)
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = max(2f, r * 0.09f)
+        p.color = border
+        c.drawCircle(cx, cy, r, p)
+        p.style = Paint.Style.FILL
+    }
+
+    // ------------------------------------------------------------------ quadro principal
+
+    fun draw(c: Canvas) {
+        if (w == 0 || tiles == null) return
+        val pl = g.player
+        camX = pl.fx + 0.5f
+        camY = pl.fy + 0.5f
+        if (g.shake > 0f) {
+            camX += (Math.random().toFloat() - 0.5f) * 0.12f
+            camY += (Math.random().toFloat() - 0.5f) * 0.12f
+        }
+        hits.clear()
+        battleList.clear()
+        itemKeys.clear()
+        modalStart = -1
+
+        c.drawColor(0xFF000000.toInt())
+        drawWorld(c)
+        drawCorpses(c)
+        drawCreatures(c)
+        drawProjectiles(c)
+        drawParticles(c)
+        drawNames(c)
+        drawTexts(c)
+
+        val v = vig
+        if (v != null) {
+            p.style = Paint.Style.FILL
+            p.shader = v
+            c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p)
+            p.shader = null
+        }
+        if (pl.flash > 0f) {
+            p.color = withAlpha(0xFFFF2020.toInt(), min(0.35f, pl.flash * 1.6f))
+            c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p)
+        }
+
+        drawHud(c)
+        if (g.ui == 1) drawBag(c)
+        if (g.ui == 2) drawMenu(c)
+        if (g.dead) drawDead(c)
+    }
+
+    private fun drawWorld(c: Canvas) {
+        val tb = tiles ?: return
+        val t = tile
+        val halfW = w / 2f
+        val halfH = h / 2f
+        val x0 = floor(camX - halfW / t).toInt() - 1
+        val x1 = ceil(camX + halfW / t).toInt() + 1
+        val y0 = floor(camY - halfH / t).toInt() - 1
+        val y1 = ceil(camY + halfH / t).toInt() + 1
+        val wd = g.world
+        for (ty in y0..y1) {
+            for (tx in x0..x1) {
+                if (tx < 0 || ty < 0 || tx >= wd.w || ty >= wd.h) continue
+                val sx = Math.round((tx - camX) * t + halfW)
+                val sy = Math.round((ty - camY) * t + halfH)
+                val id = wd.tiles[ty * wd.w + tx]
+                var v = hash2(tx, ty, 5) and 3
+                if (id == Tl.WATER) v = ((g.time * 2.2f).toInt() + tx + ty * 2) and 3
+                if (id == Tl.FOUNTAIN) v = (g.time * 4f).toInt() and 1
+                c.drawBitmap(tb[id][v], sx.toFloat(), sy.toFloat(), bp)
+            }
+        }
+    }
+
+    private fun onScreen(x: Float, y: Float): Boolean {
+        val t = tile.toFloat()
+        return x > -t * 2 && x < w + t && y > -t * 2 && y < h + t
+    }
+
+    private fun drawCorpses(c: Canvas) {
+        val db = ratDeadB ?: return
+        val t = tile.toFloat()
+        for (cp in g.corpses) {
+            val sx = Math.round(sxOf(cp.x.toFloat())).toFloat()
+            val sy = Math.round(syOf(cp.y.toFloat())).toFloat()
+            if (!onScreen(sx, sy)) continue
+            bp.alpha = if (cp.life < 3f) (cp.life / 3f * 255f).toInt().coerceIn(0, 255) else 255
+            c.drawBitmap(db, sx, sy, bp)
+            bp.alpha = 255
+            if (!cp.looted && cp.loot.isNotEmpty()) {
+                val a = 0.5f + 0.5f * sin(g.time * 5f + cp.x)
+                p.style = Paint.Style.FILL
+                p.color = withAlpha(0xFFFFE066.toInt(), a)
+                val r = t * 0.06f * (0.6f + a)
+                c.drawCircle(sx + t * 0.5f, sy + t * 0.55f - a * t * 0.1f, r, p)
+            }
+        }
+    }
+
+    private fun drawCreatures(c: Canvas) {
+        val pl = g.player
+        val rb = ratB ?: return
+        val mb = mageB ?: return
+        for (m in g.monsters) {
+            if (m.alive && m.fy < pl.fy) drawCreature(c, m, rb, false)
+        }
+        drawCreature(c, pl, mb, true)
+        for (m in g.monsters) {
+            if (m.alive && m.fy >= pl.fy) drawCreature(c, m, rb, false)
+        }
+    }
+
+    private fun drawCreature(c: Canvas, cr: Creature, arr: Array<Array<Bitmap>>, mage: Boolean) {
+        val t = tile.toFloat()
+        val sx = Math.round(sxOf(cr.fx)).toFloat()
+        val sy0 = Math.round(syOf(cr.fy)).toFloat()
+        if (!onScreen(sx, sy0)) return
+        val frame = if (cr.moving) ((cr.walk * 2f).toInt() and 1) else 0
+        val bob = if (cr.moving) -abs(sin(cr.walk * PI_F)) * t * 0.05f else 0f
+        val sy = sy0 + bob
+        // sombra
+        p.style = Paint.Style.FILL
+        p.color = 0x55000000
+        rect.set(sx + t * 0.2f, sy0 + t * 0.78f, sx + t * 0.8f, sy0 + t * 0.95f)
+        c.drawOval(rect, p)
+        val bm = arr[cr.dir][frame]
+        c.drawBitmap(bm, sx, sy, if (cr.flash > 0f) flashP else bp)
+        if (mage) drawStaff(c, cr, sx, sy)
+        // escudo mágico
+        if (mage && g.player.shieldT > 0f) {
+            val a = 0.35f + 0.15f * sin(g.time * 5f)
+            p.color = withAlpha(0xFF6FB6FF.toInt(), a)
+            c.drawCircle(sx + t * 0.5f, sy + t * 0.55f, t * 0.62f, p)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = max(2f, t * 0.03f)
+            p.color = withAlpha(0xFFBFE0FF.toInt(), 0.8f)
+            c.drawCircle(sx + t * 0.5f, sy + t * 0.55f, t * 0.62f, p)
+            p.style = Paint.Style.FILL
+        }
+        // velocidade: poeira nos pés
+        if (mage && g.player.hasteT > 0f && cr.moving) {
+            p.color = withAlpha(0xFF7CFF8A.toInt(), 0.5f)
+            c.drawCircle(sx + t * 0.5f, sy0 + t * 0.9f, t * 0.07f, p)
+        }
+    }
+
+    private fun drawStaff(c: Canvas, cr: Creature, sx: Float, sy: Float) {
+        val t = tile.toFloat()
+        val hx = when (cr.dir) {
+            0 -> 0.20f
+            1 -> 0.86f
+            3 -> 0.14f
+            else -> 0.82f
+        }
+        val x = sx + hx * t
+        val y0 = sy + 0.10f * t
+        val y1 = sy + 0.95f * t
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = t * 0.06f
+        p.strokeCap = Paint.Cap.ROUND
+        p.color = 0xFF8B5E3C.toInt()
+        c.drawLine(x, y0 + t * 0.06f, x, y1, p)
+        p.strokeCap = Paint.Cap.BUTT
+        val pulse = 0.75f + 0.25f * sin(g.time * 6f)
+        p.style = Paint.Style.FILL
+        p.color = withAlpha(0xFFFF9A3D.toInt(), 0.25f * pulse)
+        c.drawCircle(x, y0, t * 0.17f, p)
+        p.color = withAlpha(0xFFFF9A3D.toInt(), 0.55f * pulse)
+        c.drawCircle(x, y0, t * 0.1f, p)
+        p.color = 0xFFFFE0A0.toInt()
+        c.drawCircle(x, y0, t * 0.05f, p)
+    }
+
+    private fun drawProjectiles(c: Canvas) {
+        val t = tile.toFloat()
+        for (s in g.shots) {
+            val tx = s.target.fx + 0.5f
+            val ty = s.target.fy + 0.45f
+            for (k in 0..3) {
+                val tt = max(0f, s.t - k * 0.06f)
+                val wx = s.fromX + (tx - s.fromX) * tt
+                val wy = s.fromY + (ty - s.fromY) * tt
+                val x = sxOf(wx)
+                val y = syOf(wy)
+                p.style = Paint.Style.FILL
+                p.color = withAlpha(s.color, 0.8f - k * 0.2f)
+                c.drawCircle(x, y, t * (0.09f - k * 0.015f), p)
+                if (k == 0) {
+                    p.color = withAlpha(s.color, 0.3f)
+                    c.drawCircle(x, y, t * 0.17f, p)
+                    p.color = 0xFFFFFFFF.toInt()
+                    c.drawCircle(x, y, t * 0.04f, p)
+                }
+            }
+        }
+    }
+
+    private fun drawParticles(c: Canvas) {
+        val t = tile.toFloat()
+        p.style = Paint.Style.FILL
+        for (pt in g.parts) {
+            if (pt.delay > 0f) continue
+            val f = pt.life / pt.maxLife
+            val x = sxOf(pt.x)
+            val y = syOf(pt.y)
+            if (!onScreen(x, y)) continue
+            val r = pt.size * t * (0.4f + 0.6f * f)
+            p.color = withAlpha(pt.color, min(1f, f * 1.6f))
+            when (pt.kind) {
+                1 -> c.drawRect(x - r, y - r, x + r, y + r, p)
+                2 -> {
+                    c.drawRect(x - r * 2f, y - r * 0.35f, x + r * 2f, y + r * 0.35f, p)
+                    c.drawRect(x - r * 0.35f, y - r * 2f, x + r * 0.35f, y + r * 2f, p)
+                }
+                else -> {
+                    c.drawCircle(x, y, r, p)
+                    p.color = withAlpha(pt.color, min(1f, f) * 0.25f)
+                    c.drawCircle(x, y, r * 2f, p)
+                }
+            }
+        }
+    }
+
+    private fun drawNames(c: Canvas) {
+        val t = tile.toFloat()
+        for (m in g.monsters) {
+            if (!m.alive) continue
+            val x = sxOf(m.fx) + t * 0.5f
+            val y = syOf(m.fy)
+            if (!onScreen(x, y)) continue
+            txt(c, m.name, x, y + t * 0.06f, t * 0.19f, COL_WHITE, Paint.Align.CENTER)
+            bar(c, x - t * 0.4f, y + t * 0.1f, t * 0.8f, t * 0.1f, m.hp.toFloat() / m.maxHp, hpColor(m.hp.toFloat() / m.maxHp), 0x55FFFFFF, "")
+        }
+        val pl = g.player
+        if (!g.dead) {
+            val x = sxOf(pl.fx) + t * 0.5f
+            val y = syOf(pl.fy)
+            txt(c, pl.name, x, y + t * 0.06f, t * 0.19f, 0xFFB8F0B8.toInt(), Paint.Align.CENTER)
+            bar(c, x - t * 0.4f, y + t * 0.1f, t * 0.8f, t * 0.1f, pl.hp.toFloat() / pl.maxHp, hpColor(pl.hp.toFloat() / pl.maxHp), 0x55FFFFFF, "")
+        }
+        val tg = g.target
+        if (tg != null && tg.alive) {
+            val x = sxOf(tg.fx)
+            val y = syOf(tg.fy)
+            val a = 0.65f + 0.35f * sin(g.time * 7f)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = max(3f, t * 0.05f)
+            p.color = withAlpha(0xFFFF3030.toInt(), a)
+            c.drawRect(x + 2f, y + 2f, x + t - 2f, y + t - 2f, p)
+            p.style = Paint.Style.FILL
+        }
+    }
+
+    private fun drawTexts(c: Canvas) {
+        val t = tile.toFloat()
+        for (ft in g.texts) {
+            val x = sxOf(ft.x)
+            val y = syOf(ft.y)
+            if (!onScreen(x, y)) continue
+            val f = ft.life / ft.maxLife
+            val a = if (f > 0.3f) 1f else f / 0.3f
+            txt(c, ft.text, x, y, t * 0.3f * ft.size, withAlpha(ft.color, a), Paint.Align.CENTER)
+        }
+    }
+
+    // ------------------------------------------------------------------ interface
+
+    private fun drawHud(c: Canvas) {
+        val t = tile.toFloat()
+        val mg = t * 0.22f
+        drawStatus(c, mg)
+        drawMiniAndButtons(c, mg)
+        drawBattle(c, mg)
+        drawJoystick(c, mg)
+        drawHotbar(c, mg)
+        drawConsole(c, mg)
+        val pz = g.world.isPz(g.player.x, g.player.y)
+        val zone = if (pz) "Aldoria - Zona de Proteção" else "Terras Selvagens"
+        txt(c, zone, w / 2f, mg + t * 0.28f, t * 0.24f, if (pz) 0xFF9BE7FF.toInt() else 0xFFFFD0A0.toInt(), Paint.Align.CENTER)
+    }
+
+    private fun drawStatus(c: Canvas, mg: Float) {
+        val t = tile.toFloat()
+        val pl = g.player
+        val x = mg
+        val y = mg
+        panel(c, x, y, x + t * 4.4f, y + t * 1.5f)
+        txt(c, pl.name + "   Nível " + pl.level, x + t * 0.2f, y + t * 0.38f, t * 0.27f, COL_YELLOW, Paint.Align.LEFT)
+        bar(c, x + t * 0.2f, y + t * 0.52f, t * 4.0f, t * 0.28f, pl.hp.toFloat() / pl.maxHp, 0xFFD23A3A.toInt(), 0x66FFFFFF, "" + pl.hp + " / " + pl.maxHp)
+        bar(c, x + t * 0.2f, y + t * 0.86f, t * 4.0f, t * 0.28f, pl.mana.toFloat() / pl.maxMana, 0xFF3A6FD2.toInt(), 0x66FFFFFF, "" + pl.mana + " / " + pl.maxMana)
+        val cur = expForLevel(pl.level)
+        val nxt = expForLevel(pl.level + 1)
+        val ef = if (nxt > cur) (pl.exp - cur).toFloat() / (nxt - cur).toFloat() else 0f
+        bar(c, x + t * 0.2f, y + t * 1.2f, t * 4.0f, t * 0.14f, ef, 0xFFE0B030.toInt(), 0x66FFFFFF, "")
+        // ícones de efeito
+        var ix = x + t * 0.3f
+        val iy = y + t * 1.5f + t * 0.35f
+        if (pl.hasteT > 0f) {
+            button(c, ix, iy, t * 0.28f, 0xFF7CFF8A.toInt())
+            txt(c, "V", ix, iy + t * 0.09f, t * 0.28f, 0xFF7CFF8A.toInt(), Paint.Align.CENTER)
+            txt(c, "" + pl.hasteT.toInt(), ix, iy + t * 0.55f, t * 0.18f, COL_WHITE, Paint.Align.CENTER)
+            ix += t * 0.7f
+        }
+        if (pl.shieldT > 0f) {
+            button(c, ix, iy, t * 0.28f, 0xFF6FB6FF.toInt())
+            txt(c, "E", ix, iy + t * 0.09f, t * 0.28f, 0xFF6FB6FF.toInt(), Paint.Align.CENTER)
+            txt(c, "" + pl.shieldT.toInt(), ix, iy + t * 0.55f, t * 0.18f, COL_WHITE, Paint.Align.CENTER)
+        }
+    }
+
+    private fun drawMiniAndButtons(c: Canvas, mg: Float) {
+        val t = tile.toFloat()
+        val ms = t * 2.3f
+        val l = w - mg - ms
+        val top = mg
+        panel(c, l - 3f, top - 3f, l + ms + 3f, top + ms + 3f)
+        val mb = miniB
+        val wd = g.world
+        if (mb != null) {
+            rect.set(l, top, l + ms, top + ms)
+            // recorte: mostra a região ao redor do jogador (40 x 40 quadrados)
+            val half = 20f
+            var cx = g.player.fx + 0.5f
+            var cy = g.player.fy + 0.5f
+            cx = if (cx < half) half else if (cx > wd.w - half) wd.w - half else cx
+            cy = if (cy < half) half else if (cy > wd.h - half) wd.h - half else cy
+            val srcL = (cx - half).toInt()
+            val srcT = (cy - half).toInt()
+            val src = android.graphics.Rect(srcL, srcT, min(wd.w, srcL + 40), min(wd.h, srcT + 40))
+            c.drawBitmap(mb, src, rect, bp)
+            val ux = ms / 40f
+            // monstros
+            p.style = Paint.Style.FILL
+            p.color = 0xFFFF4040.toInt()
+            for (m in g.monsters) {
+                if (!m.alive) continue
+                val px = (m.x - srcL + 0.5f) * ux
+                val py = (m.y - srcT + 0.5f) * ux
+                if (px < 0f || py < 0f || px > ms || py > ms) continue
+                c.drawCircle(l + px, top + py, max(2f, ux * 0.5f), p)
+            }
+            val ppx = (g.player.x - srcL + 0.5f) * ux
+            val ppy = (g.player.y - srcT + 0.5f) * ux
+            p.color = if (((g.time * 3f).toInt() and 1) == 0) 0xFFFFFFFF.toInt() else 0xFFFFE066.toInt()
+            c.drawCircle(l + ppx, top + ppy, max(3f, ux * 0.8f), p)
+        }
+        // botões de menu e mochila à esquerda do minimapa
+        val br = t * 0.4f
+        val bx1 = l - mg - br
+        val by = top + br
+        button(c, bx1, by, br, 0xFF8A6A45.toInt())
+        for (k in -1..1) {
+            p.color = 0xFFE8D6B0.toInt()
+            c.drawRect(bx1 - br * 0.45f, by + k * br * 0.32f - br * 0.07f, bx1 + br * 0.45f, by + k * br * 0.32f + br * 0.07f, p)
+        }
+        addHit(Ui.MENU, bx1 - br, by - br, bx1 + br, by + br)
+        val bx2 = bx1 - br * 2f - mg
+        button(c, bx2, by, br, if (g.ui == 1) 0xFFFFE066.toInt() else 0xFF8A6A45.toInt())
+        // ícone de mochila
+        rect.set(bx2 - br * 0.45f, by - br * 0.4f, bx2 + br * 0.45f, by + br * 0.5f)
+        p.color = 0xFFB07A3C.toInt()
+        c.drawRoundRect(rect, br * 0.25f, br * 0.25f, p)
+        p.color = 0xFF7A4F22.toInt()
+        c.drawRect(bx2 - br * 0.45f, by - br * 0.05f, bx2 + br * 0.45f, by + br * 0.1f, p)
+        p.color = 0xFFF2C94C.toInt()
+        c.drawRect(bx2 - br * 0.08f, by - br * 0.1f, bx2 + br * 0.08f, by + br * 0.2f, p)
+        addHit(Ui.BAG, bx2 - br, by - br, bx2 + br, by + br)
+    }
+
+    private fun drawBattle(c: Canvas, mg: Float) {
+        val t = tile.toFloat()
+        val ms = t * 2.3f
+        val l = w - mg - ms
+        val top = mg + ms + t * 0.3f
+        // lista os monstros mais próximos
+        val list = ArrayList<Monster>()
+        for (m in g.monsters) {
+            if (!m.alive) continue
+            if (cheb(g.player.x, g.player.y, m.x, m.y) <= 8) list.add(m)
+        }
+        list.sortBy { cheb(g.player.x, g.player.y, it.x, it.y) }
+        val n = min(4, list.size)
+        if (n == 0) return
+        val rowH = t * 0.62f
+        panel(c, l - 3f, top, l + ms + 3f, top + rowH * n + t * 0.12f)
+        for (i in 0 until n) {
+            val m = list[i]
+            battleList.add(m)
+            val ry = top + t * 0.06f + i * rowH
+            if (g.target === m) {
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = max(2f, t * 0.04f)
+                p.color = 0xFFFF3030.toInt()
+                rect.set(l + 2f, ry + 1f, l + ms - 2f, ry + rowH - 1f)
+                c.drawRect(rect, p)
+                p.style = Paint.Style.FILL
+            }
+            val rb = ratB
+            if (rb != null) {
+                rect.set(l + t * 0.04f, ry + t * 0.02f, l + t * 0.04f + rowH * 0.95f, ry + t * 0.02f + rowH * 0.95f)
+                c.drawBitmap(rb[2][0], null, rect, bp)
+            }
+            txt(c, m.name, l + rowH + t * 0.06f, ry + t * 0.24f, t * 0.2f, COL_WHITE, Paint.Align.LEFT)
+            val f = m.hp.toFloat() / m.maxHp
+            bar(c, l + rowH + t * 0.06f, ry + t * 0.32f, ms - rowH - t * 0.18f, t * 0.16f, f, hpColor(f), 0x55FFFFFF, "")
+            addHit(Ui.BATTLE0 + i, l, ry, l + ms, ry + rowH)
+        }
+    }
+
+    private fun drawJoystick(c: Canvas, mg: Float) {
+        val t = tile.toFloat()
+        joyR = t * 1.15f
+        joyCx = mg + joyR + t * 0.25f
+        joyCy = h - mg - joyR - t * 0.1f
+        p.style = Paint.Style.FILL
+        p.color = 0x44FFFFFF
+        c.drawCircle(joyCx, joyCy, joyR, p)
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = max(2f, t * 0.04f)
+        p.color = 0x88FFFFFF.toInt()
+        c.drawCircle(joyCx, joyCy, joyR, p)
+        p.style = Paint.Style.FILL
+        p.color = 0x66FFFFFF
+        for (d in 0 until 4) {
+            val ax = joyCx + DX[d] * joyR * 0.72f
+            val ay = joyCy + DY[d] * joyR * 0.72f
+            path.reset()
+            val s = joyR * 0.14f
+            when (d) {
+                0 -> { path.moveTo(ax, ay - s); path.lineTo(ax - s, ay + s); path.lineTo(ax + s, ay + s) }
+                1 -> { path.moveTo(ax + s, ay); path.lineTo(ax - s, ay - s); path.lineTo(ax - s, ay + s) }
+                2 -> { path.moveTo(ax, ay + s); path.lineTo(ax - s, ay - s); path.lineTo(ax + s, ay - s) }
+                else -> { path.moveTo(ax - s, ay); path.lineTo(ax + s, ay - s); path.lineTo(ax + s, ay + s) }
+            }
+            path.close()
+            c.drawPath(path, p)
+        }
+        val kx = joyCx + g.joyX * joyR * 0.55f
+        val ky = joyCy + g.joyY * joyR * 0.55f
+        p.color = if (g.joyDir >= 0) 0xCCFFE066.toInt() else 0x99FFFFFF.toInt()
+        c.drawCircle(kx, ky, joyR * 0.38f, p)
+        p.style = Paint.Style.STROKE
+        p.color = 0xFF5A4630.toInt()
+        c.drawCircle(kx, ky, joyR * 0.38f, p)
+        p.style = Paint.Style.FILL
+    }
+
+    private fun drawHotbar(c: Canvas, mg: Float) {
+        val t = tile.toFloat()
+        val bs = t * 1.0f
+        val gap = t * 0.14f
+        for (i in 0 until Spells.list.size) {
+            val col = i % 3
+            val row = i / 3
+            val cx = w - mg - bs / 2f - col * (bs + gap)
+            val cy = h - mg - bs / 2f - row * (bs + gap)
+            drawSpellButton(c, i, cx, cy, bs / 2f)
+            addHit(Ui.SPELL0 + i, cx - bs / 2f, cy - bs / 2f, cx + bs / 2f, cy + bs / 2f)
+        }
+        // botão de mira, à esquerda da fileira de baixo
+        val tcx = w - mg - bs / 2f - 3 * (bs + gap)
+        val tcy = h - mg - bs / 2f
+        val active = g.target != null
+        button(c, tcx, tcy, bs / 2f, if (active) 0xFFFF3030.toInt() else 0xFF8A6A45.toInt())
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = max(2f, bs * 0.06f)
+        p.color = if (active) 0xFFFF6060.toInt() else 0xFFE8D6B0.toInt()
+        c.drawCircle(tcx, tcy, bs * 0.22f, p)
+        c.drawLine(tcx - bs * 0.36f, tcy, tcx - bs * 0.1f, tcy, p)
+        c.drawLine(tcx + bs * 0.1f, tcy, tcx + bs * 0.36f, tcy, p)
+        c.drawLine(tcx, tcy - bs * 0.36f, tcx, tcy - bs * 0.1f, p)
+        c.drawLine(tcx, tcy + bs * 0.1f, tcx, tcy + bs * 0.36f, p)
+        p.style = Paint.Style.FILL
+        addHit(Ui.TARGET, tcx - bs / 2f, tcy - bs / 2f, tcx + bs / 2f, tcy + bs / 2f)
+    }
+
+    private fun drawSpellButton(c: Canvas, i: Int, cx: Float, cy: Float, r: Float) {
+        val s = Spells.list[i]
+        val pl = g.player
+        val locked = pl.level < s.level
+        val noMana = !locked && pl.mana < s.mana
+        button(c, cx, cy, r, if (locked) 0xFF444444.toInt() else s.color)
+        val ic = if (locked) 0xFF666666.toInt() else if (noMana) mixCol(s.color, 0xFF444444.toInt(), 0.6f) else s.color
+        spellIcon(c, s.kind, cx, cy - r * 0.08f, r * 0.7f, ic)
+        if (locked) {
+            txt(c, "Nv " + s.level, cx, cy + r * 0.72f, r * 0.34f, 0xFFAAAAAA.toInt(), Paint.Align.CENTER)
+        } else {
+            txt(c, "" + s.mana, cx, cy + r * 0.74f, r * 0.34f, if (noMana) 0xFF7A9BD0.toInt() else 0xFF9BC8FF.toInt(), Paint.Align.CENTER)
+        }
+        val cdv = g.cd[i]
+        if (cdv > 0f && !locked) {
+            val f = min(1f, cdv / s.cd)
+            p.style = Paint.Style.FILL
+            p.color = 0xAA000000.toInt()
+            rect.set(cx - r, cy - r, cx + r, cy + r)
+            c.drawArc(rect, -90f, 360f * f, true, p)
+            txt(c, String.format("%.1f", cdv), cx, cy + r * 0.12f, r * 0.45f, COL_WHITE, Paint.Align.CENTER)
+        }
+    }
+
+    private fun spellIcon(c: Canvas, kind: Int, cx: Float, cy: Float, r: Float, col: Int) {
+        p.style = Paint.Style.FILL
+        p.color = col
+        when (kind) {
+            Spells.HEAL -> {
+                rect.set(cx - r * 0.2f, cy - r * 0.6f, cx + r * 0.2f, cy + r * 0.6f)
+                c.drawRoundRect(rect, r * 0.1f, r * 0.1f, p)
+                rect.set(cx - r * 0.6f, cy - r * 0.2f, cx + r * 0.6f, cy + r * 0.2f)
+                c.drawRoundRect(rect, r * 0.1f, r * 0.1f, p)
+            }
+            Spells.FIRE -> {
+                path.reset()
+                path.moveTo(cx, cy - r * 0.7f)
+                path.cubicTo(cx + r * 0.6f, cy - r * 0.1f, cx + r * 0.55f, cy + r * 0.6f, cx, cy + r * 0.6f)
+                path.cubicTo(cx - r * 0.55f, cy + r * 0.6f, cx - r * 0.6f, cy - r * 0.1f, cx, cy - r * 0.7f)
+                path.close()
+                c.drawPath(path, p)
+                p.color = 0xFFFFE066.toInt()
+                path.reset()
+                path.moveTo(cx, cy - r * 0.1f)
+                path.cubicTo(cx + r * 0.3f, cy + r * 0.2f, cx + r * 0.28f, cy + r * 0.55f, cx, cy + r * 0.55f)
+                path.cubicTo(cx - r * 0.28f, cy + r * 0.55f, cx - r * 0.3f, cy + r * 0.2f, cx, cy - r * 0.1f)
+                path.close()
+                c.drawPath(path, p)
+            }
+            Spells.ENERGY -> {
+                path.reset()
+                path.moveTo(cx + r * 0.15f, cy - r * 0.75f)
+                path.lineTo(cx - r * 0.45f, cy + r * 0.05f)
+                path.lineTo(cx - r * 0.02f, cy + r * 0.05f)
+                path.lineTo(cx - r * 0.18f, cy + r * 0.75f)
+                path.lineTo(cx + r * 0.45f, cy - r * 0.15f)
+                path.lineTo(cx + r * 0.02f, cy - r * 0.15f)
+                path.close()
+                c.drawPath(path, p)
+            }
+            Spells.WAVE -> {
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = max(2f, r * 0.15f)
+                for (k in 1..3) {
+                    val rr = r * 0.28f * k
+                    rect.set(cx - rr, cy + r * 0.45f - rr, cx + rr, cy + r * 0.45f + rr)
+                    c.drawArc(rect, 230f, 80f, false, p)
+                }
+                p.style = Paint.Style.FILL
+            }
+            Spells.HASTE -> {
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = max(2f, r * 0.17f)
+                for (k in 0..1) {
+                    val ox = cx - r * 0.35f + k * r * 0.5f
+                    path.reset()
+                    path.moveTo(ox - r * 0.2f, cy - r * 0.5f)
+                    path.lineTo(ox + r * 0.2f, cy)
+                    path.lineTo(ox - r * 0.2f, cy + r * 0.5f)
+                    c.drawPath(path, p)
+                }
+                p.style = Paint.Style.FILL
+            }
+            else -> {
+                path.reset()
+                path.moveTo(cx - r * 0.5f, cy - r * 0.55f)
+                path.lineTo(cx + r * 0.5f, cy - r * 0.55f)
+                path.lineTo(cx + r * 0.5f, cy + r * 0.05f)
+                path.quadTo(cx + r * 0.5f, cy + r * 0.55f, cx, cy + r * 0.75f)
+                path.quadTo(cx - r * 0.5f, cy + r * 0.55f, cx - r * 0.5f, cy + r * 0.05f)
+                path.close()
+                c.drawPath(path, p)
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = max(2f, r * 0.08f)
+                p.color = 0xFFFFFFFF.toInt()
+                c.drawPath(path, p)
+                p.style = Paint.Style.FILL
+            }
+        }
+    }
+
+    private fun drawConsole(c: Canvas, mg: Float) {
+        val t = tile.toFloat()
+        val x = joyCx + joyR + t * 0.35f
+        val maxX = w - mg - 4 * (t * 1.14f) - t * 0.2f
+        val size = t * 0.21f
+        var shown = 0
+        var i = g.log.size - 1
+        c.save()
+        c.clipRect(x - 4f, 0f, maxX, h.toFloat())
+        while (i >= 0 && shown < 6) {
+            val ln = g.log[i]
+            if (ln.life > 0f) {
+                val a = if (ln.life > 2f) 1f else ln.life / 2f
+                txt(c, ln.text, x, h - mg - shown * size * 1.25f - t * 0.05f, size, withAlpha(ln.color, a), Paint.Align.LEFT)
+                shown++
+            }
+            i--
+        }
+        c.restore()
+    }
+
+    // ------------------------------------------------------------------ mochila e personagem
+
+    private fun itemIcon(c: Canvas, id: String, cx: Float, cy: Float, r: Float) {
+        p.style = Paint.Style.FILL
+        when (id) {
+            "gold" -> {
+                p.color = 0xFFB8860B.toInt()
+                c.drawCircle(cx, cy, r * 0.62f, p)
+                p.color = 0xFFF2C94C.toInt()
+                c.drawCircle(cx, cy, r * 0.5f, p)
+                p.color = 0xFFFFE9A0.toInt()
+                c.drawCircle(cx - r * 0.12f, cy - r * 0.12f, r * 0.18f, p)
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = max(2f, r * 0.07f)
+                p.color = 0xFFB8860B.toInt()
+                c.drawCircle(cx, cy, r * 0.32f, p)
+                p.style = Paint.Style.FILL
+            }
+            "cheese" -> {
+                path.reset()
+                path.moveTo(cx - r * 0.7f, cy + r * 0.4f)
+                path.lineTo(cx + r * 0.7f, cy + r * 0.4f)
+                path.lineTo(cx + r * 0.7f, cy - r * 0.05f)
+                path.lineTo(cx - r * 0.7f, cy - r * 0.45f)
+                path.close()
+                p.color = 0xFFF2C94C.toInt()
+                c.drawPath(path, p)
+                p.color = 0xFFE0A91E.toInt()
+                c.drawRect(cx - r * 0.7f, cy + r * 0.25f, cx + r * 0.7f, cy + r * 0.4f, p)
+                p.color = 0xFFC88A12.toInt()
+                c.drawCircle(cx - r * 0.1f, cy + r * 0.02f, r * 0.12f, p)
+                c.drawCircle(cx + r * 0.38f, cy + r * 0.12f, r * 0.09f, p)
+                c.drawCircle(cx - r * 0.45f, cy + r * 0.18f, r * 0.07f, p)
+            }
+        }
+    }
+
+    private fun drawBag(c: Canvas) {
+        val t = tile.toFloat()
+        val sw = w.toFloat()
+        val sh = h.toFloat()
+        modalStart = hits.size
+        addHit(Ui.BAG_CLOSE, 0f, 0f, sw, sh)
+        p.style = Paint.Style.FILL
+        p.color = 0xAA000000.toInt()
+        c.drawRect(0f, 0f, sw, sh, p)
+        val pw = min(sw * 0.94f, t * 10.4f)
+        val ph = min(sh * 0.92f, t * 6.6f)
+        val l = (sw - pw) / 2f
+        val top = (sh - ph) / 2f
+        panel(c, l, top, l + pw, top + ph)
+        addHit(Ui.BLOCK, l, top, l + pw, top + ph)
+        // abas
+        val tabW = t * 2.4f
+        val tabH = t * 0.62f
+        for (k in 0..1) {
+            val tl = l + t * 0.3f + k * (tabW + t * 0.15f)
+            val tt = top + t * 0.22f
+            val sel = g.bagTab == k
+            rect.set(tl, tt, tl + tabW, tt + tabH)
+            p.style = Paint.Style.FILL
+            p.color = if (sel) 0xFF6B5236.toInt() else 0xFF2A211A.toInt()
+            c.drawRoundRect(rect, t * 0.1f, t * 0.1f, p)
+            txt(c, if (k == 0) "Mochila" else "Personagem", tl + tabW / 2f, tt + tabH * 0.68f, t * 0.27f, if (sel) COL_YELLOW else COL_GRAY, Paint.Align.CENTER)
+            addHit(if (k == 0) Ui.TAB_BAG else Ui.TAB_CHAR, tl, tt, tl + tabW, tt + tabH)
+        }
+        // fechar
+        val cr = t * 0.3f
+        val ccx = l + pw - t * 0.5f
+        val ccy = top + t * 0.53f
+        button(c, ccx, ccy, cr, 0xFFC84A4A.toInt())
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = max(2f, cr * 0.18f)
+        p.color = COL_WHITE
+        c.drawLine(ccx - cr * 0.4f, ccy - cr * 0.4f, ccx + cr * 0.4f, ccy + cr * 0.4f, p)
+        c.drawLine(ccx + cr * 0.4f, ccy - cr * 0.4f, ccx - cr * 0.4f, ccy + cr * 0.4f, p)
+        p.style = Paint.Style.FILL
+        addHit(Ui.BAG_CLOSE, ccx - cr, ccy - cr, ccx + cr, ccy + cr)
+
+        if (g.bagTab == 0) drawBackpack(c, l, top, pw, ph) else drawCharacter(c, l, top, pw, ph)
+    }
+
+    private fun drawBackpack(c: Canvas, l: Float, top: Float, pw: Float, ph: Float) {
+        val t = tile.toFloat()
+        val slot = t * 0.95f
+        val cols = 6
+        val rows = 3
+        val gx = l + t * 0.4f
+        val gy = top + t * 1.1f
+        itemKeys.clear()
+        for ((id, n) in g.inv) if (n > 0) itemKeys.add(id)
+        for (r in 0 until rows) {
+            for (k in 0 until cols) {
+                val idx = r * cols + k
+                val sx = gx + k * (slot + t * 0.08f)
+                val sy = gy + r * (slot + t * 0.08f)
+                rect.set(sx, sy, sx + slot, sy + slot)
+                p.style = Paint.Style.FILL
+                p.color = 0xFF2A211A.toInt()
+                c.drawRoundRect(rect, t * 0.08f, t * 0.08f, p)
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = 2f
+                p.color = 0xFF5A4630.toInt()
+                c.drawRoundRect(rect, t * 0.08f, t * 0.08f, p)
+                p.style = Paint.Style.FILL
+                if (idx < itemKeys.size) {
+                    val id = itemKeys[idx]
+                    val n = g.inv[id] ?: 0
+                    if (g.selItem == id) {
+                        p.style = Paint.Style.STROKE
+                        p.strokeWidth = max(3f, t * 0.05f)
+                        p.color = COL_YELLOW
+                        c.drawRoundRect(rect, t * 0.08f, t * 0.08f, p)
+                        p.style = Paint.Style.FILL
+                    }
+                    itemIcon(c, id, sx + slot / 2f, sy + slot / 2f, slot * 0.5f)
+                    if (n > 1 || id == "gold") txt(c, "" + n, sx + slot - t * 0.06f, sy + slot - t * 0.08f, t * 0.22f, COL_WHITE, Paint.Align.RIGHT)
+                    addHit(Ui.ITEM0 + idx, sx, sy, sx + slot, sy + slot)
+                }
+            }
+        }
+        // descrição do item escolhido
+        val dy = gy + rows * (slot + t * 0.08f) + t * 0.15f
+        val sel = g.selItem
+        if (sel.isNotEmpty() && (g.inv[sel] ?: 0) > 0) {
+            txt(c, Items.title(sel), l + t * 0.4f, dy + t * 0.25f, t * 0.28f, COL_YELLOW, Paint.Align.LEFT)
+            txt(c, Items.desc(sel), l + t * 0.4f, dy + t * 0.62f, t * 0.2f, COL_GRAY, Paint.Align.LEFT)
+            if (Items.usable(sel)) {
+                val bw = t * 1.6f
+                val bh = t * 0.6f
+                val bl = l + pw - t * 0.4f - bw
+                rect.set(bl, dy, bl + bw, dy + bh)
+                p.color = 0xFF3C7A3C.toInt()
+                c.drawRoundRect(rect, t * 0.1f, t * 0.1f, p)
+                txt(c, "Usar", bl + bw / 2f, dy + bh * 0.68f, t * 0.28f, COL_WHITE, Paint.Align.CENTER)
+                addHit(Ui.USE, bl, dy, bl + bw, dy + bh)
+            }
+        } else if (itemKeys.isEmpty()) {
+            txt(c, "A mochila está vazia. Derrote monstros e pegue o loot.", l + t * 0.4f, dy + t * 0.3f, t * 0.22f, COL_GRAY, Paint.Align.LEFT)
+        } else {
+            txt(c, "Toque em um item para ver os detalhes.", l + t * 0.4f, dy + t * 0.3f, t * 0.22f, COL_GRAY, Paint.Align.LEFT)
+        }
+    }
+
+    private fun drawCharacter(c: Canvas, l: Float, top: Float, pw: Float, ph: Float) {
+        val t = tile.toFloat()
+        val pl = g.player
+        val x = l + t * 0.4f
+        var y = top + t * 1.3f
+        val sz = t * 0.26f
+        val lh = t * 0.44f
+        val cur = expForLevel(pl.level)
+        val nxt = expForLevel(pl.level + 1)
+        val pct = if (nxt > cur) ((pl.exp - cur) * 100L / (nxt - cur)).toInt() else 0
+        val mlNeed = manaNeeded(pl.ml)
+        val mlPct = if (mlNeed > 0) (pl.manaSpent * 100L / mlNeed).toInt() else 0
+        val lines = arrayOf(
+            "Nível: " + pl.level,
+            "Experiência: " + pl.exp + " (" + pct + "% para o nível " + (pl.level + 1) + ")",
+            "Vida: " + pl.hp + " / " + pl.maxHp,
+            "Mana: " + pl.mana + " / " + pl.maxMana,
+            "Nível mágico: " + pl.ml + " (" + mlPct + "%)",
+            "Velocidade: " + (if (pl.hasteT > 0f) "rápida" else "normal"),
+            "Ouro: " + (g.inv["gold"] ?: 0)
+        )
+        for (s in lines) {
+            txt(c, s, x, y, sz, COL_WHITE, Paint.Align.LEFT)
+            y += lh
+        }
+        // equipamento
+        val slot = t * 0.95f
+        val ex = l + pw - t * 0.5f - 3 * (slot + t * 0.12f) + t * 0.12f
+        val ey = top + t * 1.3f
+        val names = arrayOf("Chapéu", "Amuleto", "Mochila", "Varinha", "Manto", "Anel")
+        for (i in 0 until 6) {
+            val col = i % 3
+            val row = i / 3
+            val sx = ex + col * (slot + t * 0.12f)
+            val sy = ey + row * (slot + t * 0.5f)
+            rect.set(sx, sy, sx + slot, sy + slot)
+            p.style = Paint.Style.FILL
+            p.color = 0xFF2A211A.toInt()
+            c.drawRoundRect(rect, t * 0.08f, t * 0.08f, p)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = 2f
+            p.color = 0xFF5A4630.toInt()
+            c.drawRoundRect(rect, t * 0.08f, t * 0.08f, p)
+            p.style = Paint.Style.FILL
+            val cx = sx + slot / 2f
+            val cy = sy + slot / 2f
+            val r = slot * 0.5f
+            when (i) {
+                0 -> {
+                    path.reset()
+                    path.moveTo(cx + r * 0.1f, cy - r * 0.7f)
+                    path.lineTo(cx - r * 0.5f, cy + r * 0.3f)
+                    path.lineTo(cx + r * 0.5f, cy + r * 0.3f)
+                    path.close()
+                    p.color = 0xFF2F55C8.toInt()
+                    c.drawPath(path, p)
+                    p.color = 0xFFF2C94C.toInt()
+                    c.drawRect(cx - r * 0.65f, cy + r * 0.25f, cx + r * 0.65f, cy + r * 0.45f, p)
+                }
+                2 -> {
+                    rect.set(cx - r * 0.45f, cy - r * 0.4f, cx + r * 0.45f, cy + r * 0.5f)
+                    p.color = 0xFFB07A3C.toInt()
+                    c.drawRoundRect(rect, r * 0.2f, r * 0.2f, p)
+                    p.color = 0xFF7A4F22.toInt()
+                    c.drawRect(cx - r * 0.45f, cy - r * 0.05f, cx + r * 0.45f, cy + r * 0.1f, p)
+                }
+                3 -> {
+                    p.style = Paint.Style.STROKE
+                    p.strokeWidth = max(3f, r * 0.14f)
+                    p.color = 0xFF8B5E3C.toInt()
+                    c.drawLine(cx - r * 0.45f, cy + r * 0.6f, cx + r * 0.35f, cy - r * 0.4f, p)
+                    p.style = Paint.Style.FILL
+                    p.color = 0xFFC9A6FF.toInt()
+                    c.drawCircle(cx + r * 0.42f, cy - r * 0.5f, r * 0.2f, p)
+                }
+                4 -> {
+                    path.reset()
+                    path.moveTo(cx - r * 0.3f, cy - r * 0.6f)
+                    path.lineTo(cx + r * 0.3f, cy - r * 0.6f)
+                    path.lineTo(cx + r * 0.6f, cy + r * 0.6f)
+                    path.lineTo(cx - r * 0.6f, cy + r * 0.6f)
+                    path.close()
+                    p.color = 0xFF3E68DE.toInt()
+                    c.drawPath(path, p)
+                    p.color = 0xFF8A5A2B.toInt()
+                    c.drawRect(cx - r * 0.4f, cy - r * 0.05f, cx + r * 0.4f, cy + r * 0.08f, p)
+                }
+            }
+            txt(c, names[i], cx, sy + slot + t * 0.26f, t * 0.19f, COL_GRAY, Paint.Align.CENTER)
+        }
+        txt(c, "Chapéu de Mago, Varinha de Vórtice e Manto Azul", l + t * 0.4f, top + ph - t * 0.3f, t * 0.19f, 0xFF9A8A70.toInt(), Paint.Align.LEFT)
+    }
+
+    // ------------------------------------------------------------------ menu e morte
+
+    private fun menuButton(c: Canvas, id: Int, label: String, cx: Float, y: Float, bw: Float, bh: Float, col: Int) {
+        rect.set(cx - bw / 2f, y, cx + bw / 2f, y + bh)
+        p.style = Paint.Style.FILL
+        p.color = col
+        c.drawRoundRect(rect, bh * 0.2f, bh * 0.2f, p)
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = 3f
+        p.color = 0xFFE8D6B0.toInt()
+        c.drawRoundRect(rect, bh * 0.2f, bh * 0.2f, p)
+        p.style = Paint.Style.FILL
+        txt(c, label, cx, y + bh * 0.67f, bh * 0.42f, COL_WHITE, Paint.Align.CENTER)
+        addHit(id, cx - bw / 2f, y, cx + bw / 2f, y + bh)
+    }
+
+    private fun drawMenu(c: Canvas) {
+        val t = tile.toFloat()
+        val sw = w.toFloat()
+        val sh = h.toFloat()
+        modalStart = hits.size
+        addHit(Ui.BLOCK, 0f, 0f, sw, sh)
+        p.style = Paint.Style.FILL
+        p.color = 0xBB000000.toInt()
+        c.drawRect(0f, 0f, sw, sh, p)
+        val pw = t * 5f
+        val ph = t * 4.6f
+        val l = (sw - pw) / 2f
+        val top = (sh - ph) / 2f
+        panel(c, l, top, l + pw, top + ph)
+        txt(c, "Menu", sw / 2f, top + t * 0.75f, t * 0.5f, COL_YELLOW, Paint.Align.CENTER)
+        menuButton(c, Ui.MENU_CONT, "Continuar", sw / 2f, top + t * 1.05f, pw - t * 0.8f, t * 0.8f, 0xFF3C7A3C.toInt())
+        menuButton(c, Ui.MENU_SAVE, "Salvar jogo", sw / 2f, top + t * 2.0f, pw - t * 0.8f, t * 0.8f, 0xFF3A5A9A.toInt())
+        menuButton(c, Ui.MENU_EXIT, "Sair para o início", sw / 2f, top + t * 2.95f, pw - t * 0.8f, t * 0.8f, 0xFF8A4A3A.toInt())
+        txt(c, "O jogo salva sozinho a cada poucos segundos.", sw / 2f, top + ph - t * 0.2f, t * 0.17f, COL_GRAY, Paint.Align.CENTER)
+    }
+
+    private fun drawDead(c: Canvas) {
+        val t = tile.toFloat()
+        val sw = w.toFloat()
+        val sh = h.toFloat()
+        modalStart = hits.size
+        addHit(Ui.BLOCK, 0f, 0f, sw, sh)
+        p.style = Paint.Style.FILL
+        p.color = 0xCC3A0000.toInt()
+        c.drawRect(0f, 0f, sw, sh, p)
+        txt(c, "Você morreu!", sw / 2f, sh / 2f - t * 0.6f, t * 0.9f, 0xFFFF5A5A.toInt(), Paint.Align.CENTER)
+        txt(c, "Você vai perder 10% da experiência e voltar ao templo.", sw / 2f, sh / 2f - t * 0.05f, t * 0.27f, COL_WHITE, Paint.Align.CENTER)
+        menuButton(c, Ui.RESPAWN, "Renascer", sw / 2f, sh / 2f + t * 0.35f, t * 3.2f, t * 0.9f, 0xFF3C7A3C.toInt())
+    }
+}

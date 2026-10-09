@@ -1,5 +1,5 @@
-#id 2026-10-08-b
-#titulo Mago refeito: sprite nova em alta resolução
+#id 2026-10-09-b
+#titulo Mago: cajado novo, bolsa e poção no cinto, costas refeitas
 - O mago agora é desenhado em 64 x 64 pixels, o dobro de detalhes de antes, com as três direções refeitas do zero (a esquerda é o espelho da direita).
 - Chapéu de aba larga com ponta caída, faixa e fivela de ouro e estrela; barba e bigode brancos com fios e sombreado; sobrancelhas, olhos, nariz e bochechas.
 - Manto com gola dourada, dobras e barra bordada; cinto com fivela, bolsa de couro e poção na cintura; mangas largas com punhos de ouro.

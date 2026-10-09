@@ -153,40 +153,75 @@ def hline_noise(b, y, x0, x1, c, step=4, off=0):
 
 
 # ------------------------------------------------------------------ pecas
+def staff_shaft(b, x, top, y0, y1, bot=60):
+    for y in range(y0, y1):
+        k = y - top
+        b.set(x, y, WOOD[1]); b.set(x + 1, y, WOOD[2]); b.set(x + 2, y, WOOD[3])
+        if k % 13 == 5:
+            b.set(x, y, WOOD[3]); b.set(x + 1, y, WOOD[4]); b.set(x + 2, y, WOOD[4])
+        if k % 13 == 6:
+            b.set(x, y, WOOD[0])
+        if 16 <= k <= 31 and (k % 6) < 3:
+            b.set(x + (k % 6), y, GOLD[2])
+        if k in (38, 45, 51) and y < bot - 5:
+            b.set(x + 1, y, (0x9C, 0xD8, 0xFF)); b.set(x + 1, y + 1, (0x5C, 0x9C, 0xE0))
+        if y >= bot - 4:
+            r = y - (bot - 4)
+            if r == 0:
+                b.rect(x - 1, y, 5, 1, GOLD[0])
+            elif r == 1:
+                b.rect(x - 1, y, 5, 1, GOLD[2])
+            elif r == 2:
+                b.rect(x, y, 3, 1, GOLD[3])
+            else:
+                b.set(x + 1, y, GOLD[4])
+
+
 def staff(b, x, top, bot, cy):
     """cajado: x = pixel esquerdo (3 de largura)."""
-    for y in range(top, bot):
-        b.set(x, y, WOOD[1])
-        b.set(x + 1, y, WOOD[2])
-        b.set(x + 2, y, WOOD[3])
-        if (y - top) % 7 == 3:
-            b.set(x + 2, y, WOOD[4])
-            b.set(x, y, WOOD[2])
-        if (y - top) % 11 == 5:
-            b.set(x + 1, y, WOOD[3])
-    b.set(x, top + 1, WOOD[0])
-    # anel de ouro + garras
-    b.rect(x - 1, top, 5, 2, GOLD[2])
-    b.rect(x - 1, top, 5, 1, GOLD[0])
-    b.rect(x - 1, top + 1, 5, 1, GOLD[3])
-    b.rect(x - 1, top + 12, 5, 1, GOLD[2])
-    b.rect(x - 1, top + 13, 5, 1, GOLD[3])
     cx = x + 1.5
-    # garras (3 pontas)
-    for dx, h in ((-2.6, 5), (2.6, 5), (0, 3)):
-        for k in range(h):
-            b.set(int(cx + dx * (1 - k / 7.0)), top - k, GOLD[2] if dx >= 0 else GOLD[1])
-    # cristal facetado
-    pts = [(cx, cy - 6.2), (cx + 4.2, cy - .5), (cx, cy + 5), (cx - 4.2, cy - .5)]
+    staff_shaft(b, x, top, top, bot, bot)
+    # aneis de ouro
+    for yy, w in ((top, 5), (top + 12, 5), (top + 32, 5)):
+        b.rect(x - 1, yy, w, 1, GOLD[0]); b.rect(x - 1, yy + 1, w, 1, GOLD[2]); b.rect(x - 1, yy + 2, w, 1, GOLD[3])
+    # chifres de ouro em crescente
+    for sg in (-1, 1):
+        s_ = curve([(cx + sg * .5, top + .5), (cx + sg * 6.5, top - .5), (cx + sg * 7.8, top - 8), (cx + sg * 2.6, top - 12.5)], 1.7, .8, 30, 1.0)
+        tube(b, s_, GOLD)
+    # cristal facetado grande
+    pts = [(cx, cy - 6.6), (cx + 4.6, cy - .5), (cx, cy + 5.4), (cx - 4.6, cy - .5)]
     m = pmask(pts)
     for (px, py) in m:
-        l = -(((px + .5 - cx) / 4.2) * LX + ((py + .5 - cy) / 5.5) * LY)
+        l = -(((px + .5 - cx) / 4.6) * LX + ((py + .5 - cy) / 6.0) * LY)
         b.set(px, py, CRY[tone(l)])
     for (px, py) in m:
-        if abs(px + .5 - cx) < 1.2 and abs(py + .5 - (cy - .8)) < 2.6:
+        if abs(px + .5 - cx) < 1.3 and abs(py + .5 - (cy - .8)) < 2.8:
             b.set(px, py, (0xFF, 0xE0, 0xA0))
-    b.set(int(cx), int(cy - 1), WHITE)
-    b.set(int(cx) - 2, int(cy - 4), WHITE)
+        elif int(px) == int(cx) and py > cy + 1:
+            b.set(px, py, CRY[4])
+    b.set(int(cx), int(cy - 1), WHITE); b.set(int(cx), int(cy - 2), WHITE)
+    for dx, dy in ((9, -3), (-9, 3), (8, 6), (-8, -5)):
+        b.set(int(cx) + dx, int(cy) + dy, (0xFF, 0xE8, 0xB0))
+        b.set(int(cx) + dx + (1 if dx > 0 else -1), int(cy) + dy, (0xFF, 0xB0, 0x60))
+    # amuleto pendurado
+    for yy in range(top + 3, top + 8):
+        b.set(x + 4, yy, LEA[3])
+    ell(b, x + 4, top + 9.5, 2.0, 2.2, RED)
+    b.set(x + 3, top + 8, (0xFF, 0xC8, 0xC8))
+
+
+def pouch(b, x, y, w, h):
+    b.rect(x + 1, y - 2, 2, 2, LEA[4])
+    b.rect(x, y, w, h, LEA[2]); b.rect(x, y, 1, h, LEA[1]); b.rect(x + w - 1, y, 1, h, LEA[3])
+    b.rect(x, y, w, 3, LEA[3]); b.rect(x + 1, y, w - 2, 1, LEA[1]); b.rect(x, y + 2, w, 1, LEA[4])
+    b.set(x + w // 2, y + 3, GOLD[2]); b.rect(x, y + h - 1, w, 1, LEA[4])
+    b.p[y + h - 1][x] = None; b.p[y + h - 1][x + w - 1] = None
+
+
+def vial(b, x, y):
+    b.rect(x, y - 2, 2, 2, LEA[4])
+    b.rect(x, y, 2, 1, (0x9A, 0x6B, 0x3A)); b.rect(x, y + 1, 2, 2, (0xCF, 0xE6, 0xF5))
+    ell(b, x + 1, y + 5.2, 2.8, 2.8, RED); b.set(x - 1, y + 4, (0xFF, 0xD0, 0xD0))
 
 
 def boot(b, x, yt, yb, ln=5, dark=0.0):
@@ -262,7 +297,7 @@ def star(b, cx, cy, c=GOLD):
     b.set(cx + 2, cy, c[3])
 
 
-def hat(b, cx, cy_brim, P, rbase, tipr=0.9, brimrx=17, brimry=4.4, starpos=None, ph=0):
+def hat(b, cx, cy_brim, P, rbase, tipr=0.9, brimrx=17, brimry=4.4, starpos=None, ph=0, buckle=True):
     # cone (so a parte acima da aba) desenhado antes da aba
     tmp = Buf()
     s = curve(P, rbase, tipr, 64, 0.9)
@@ -284,14 +319,54 @@ def hat(b, cx, cy_brim, P, rbase, tipr=0.9, brimrx=17, brimry=4.4, starpos=None,
             if n1 <= 1 and n2 > 1:
                 t = 0 if n2 < 1.25 else 2 if n1 < .7 else 3
                 b.set(x, y, GOLD[t])
-    # fivela
-    b.rect(int(cx) - 2, int(cy_brim) - 1, 4, 3, GOLD[1])
-    b.rect(int(cx) - 1, int(cy_brim), 2, 1, GOLD[4])
-    b.set(int(cx) - 2, int(cy_brim) - 1, GOLD[0])
+    if buckle:
+        b.rect(int(cx) - 2, int(cy_brim) - 1, 4, 3, GOLD[1])
+        b.rect(int(cx) - 1, int(cy_brim), 2, 1, GOLD[4])
+        b.set(int(cx) - 2, int(cy_brim) - 1, GOLD[0])
     if starpos:
         star(b, *starpos)
         b.set(starpos[0] + 5, starpos[1] + 4, GOLD[0])
         b.set(starpos[0] - 4, starpos[1] + 5, GOLD[1])
+
+
+def eye(b, x, y, flip=False):
+    b.rect(x - 1, y - 1, 5, 1, SKIN[4])
+    b.rect(x, y, 3, 2, (0xF6, 0xF6, 0xFA))
+    ix = x if flip else x + 1
+    b.rect(ix, y, 2, 2, (0x2F, 0x6D, 0xB5))
+    b.set(ix + (0 if flip else 1), y + 1, DARK)
+    b.set(ix + (1 if flip else 0), y, (0x9C, 0xD0, 0xFF))
+    b.set(x, y + 2, SKIN[3]); b.set(x + 1, y + 2, SKIN[3])
+
+
+def grip(b, cx, cy):
+    """mao fechada em volta do cajado (cx = centro do cajado)."""
+    x0 = cx - 3
+    b.rect(x0, cy - 2, 7, 5, SKIN[2])
+    for yy in range(cy - 2, cy + 3):
+        b.set(x0, yy, SKIN[1]); b.set(x0 + 6, yy, SKIN[3])
+    for yy in (cy - 1, cy + 1):
+        b.rect(x0 + 1, yy, 5, 1, SKIN[3])
+    b.rect(x0, cy - 2, 7, 1, SKIN[0])
+    b.rect(x0, cy + 2, 7, 1, SKIN[4])
+    ell(b, cx - 1, cy - 3.6, 1.8, 1.4, SKIN)
+
+
+def boot_front(b, cx, fw):
+    yb = {1: 59, 0: 58, -1: 56}[fw]
+    b.rect(cx - 3, 48, 7, yb - 50, LEA[2]); b.rect(cx - 3, 48, 2, yb - 50, LEA[1]); b.rect(cx + 2, 48, 2, yb - 50, LEA[3])
+    ell(b, cx, yb - 3.2, 4.7, 3.3, LEA)
+    b.rect(cx - 4, yb - 1, 9, 1, LEA[4])
+    b.set(cx - 2, yb - 5, LEA[0]); b.set(cx - 1, yb - 5, LEA[0]); b.set(cx - 2, yb - 4, LEA[0])
+
+
+def boot_side(b, x, yt, yb, dark=0.0):
+    rp = [sh(c, -dark) if dark else c for c in LEA]
+    b.rect(x, yt, 6, yb - yt - 3, rp[2]); b.rect(x, yt, 2, yb - yt - 3, rp[1]); b.rect(x + 4, yt, 2, yb - yt - 3, rp[3])
+    b.rect(x - 1, yt, 8, 2, rp[1]); b.rect(x - 1, yt + 1, 8, 1, rp[3])
+    ell(b, x + 5, yb - 3, 6.4, 3.2, rp)
+    b.rect(x - 1, yb - 4, 3, 3, rp[3]); b.rect(x - 1, yb - 1, 13, 1, rp[4])
+    b.set(x + 9, yb - 5, rp[0]); b.set(x + 10, yb - 4, rp[0]); b.set(x + 2, yt + 5, GOLD[2])
 
 
 # ------------------------------------------------------------------ FRENTE
@@ -301,11 +376,9 @@ def front(f):
     bob = -2 if f in (1, 3) else 0
     st = {0: 0, 1: 1, 2: 0, 3: -1}[f]
     ph = f * 1.3
-    staff(out, 49, 14, 59, 6)
-    # botas
-    for cx, fw in ((24, st), (36, -st)):
-        bb = 58 + (1 if fw == 1 else -3 if fw == -1 else 0)
-        boot(out, cx, 48, bb, 4)
+    for cx, fw in ((25, st), (39, -st)):
+        boot_front(out, cx, fw)
+    staff(body, 49, 14, 60, 6)
     # capa de baixo / tunica
     rows = robe_rows(32, 29, 54, 9.5, 17.5)
     robe_body(body, rows, 53, ph, ROBE, (0.30, 0.50, 0.72), 0.0)
@@ -330,23 +403,19 @@ def front(f):
         for x in range(int(xl) + 1, int(xr)):
             body.set(x, y, LEA[1] if y == 39 else LEA[2] if y < 42 else LEA[4])
     body.rect(29, 38, 6, 6, GOLD[2]); body.rect(29, 38, 6, 1, GOLD[0]); body.rect(29, 43, 6, 1, GOLD[4])
-    body.rect(31, 40, 2, 2, LEA[4]); body.set(30, 39, GOLD[0])
-    # bolsa (esquerda de quem ve)
-    body.rect(21, 42, 8, 8, LEA[2]); body.rect(21, 42, 2, 8, LEA[1]); body.rect(27, 42, 2, 8, LEA[3])
-    body.rect(21, 42, 8, 3, LEA[3]); body.rect(21, 45, 8, 1, LEA[4]); body.rect(24, 45, 2, 2, GOLD[2])
-    body.rect(21, 49, 8, 1, LEA[4])
-    # pocao (direita)
-    body.rect(38, 43, 3, 2, (0x7A, 0xA8, 0xD8)); body.rect(38, 42, 3, 1, LEA[2])
-    ell(body, 39.5, 48, 3.3, 3.4, RED); body.set(38, 47, (0xFF, 0xC8, 0xC8))
+    body.rect(31, 40, 2, 2, RED[2]); body.set(31, 40, RED[0]); body.set(30, 39, GOLD[0])
+    pouch(body, 20, 43, 6, 6)
+    vial(body, 39, 43)
     # braco pendurado (lado esquerdo de quem ve)
     hy = 47 + (-2 if st == 1 else 2 if st == -1 else 0)
     s = curve([(22, 31), (16, 35), (14.5, 41), (16.5, hy - 4)], 4.6, 5.6, 40, 1.0)
     tube(body, s, ROBE, bands=[(0.78, 0.97, GOLD)])
     ell(body, 17, hy, 3.1, 3.5, SKIN); body.set(16, hy + 2, SKIN[3]); body.set(18, hy + 1, SKIN[3])
     # braco que segura o cajado
-    s = curve([(42, 31), (48, 32), (47.5, 38), (50.5, 41)], 4.6, 5.4, 40, 1.0)
+    s = curve([(42, 31), (47, 32), (45.5, 37), (48, 39.5)], 4.6, 5.4, 40, 1.0)
     tube(body, s, ROBE, bands=[(0.78, 0.97, GOLD)])
-    ell(body, 50.5, 42.5, 3.4, 3.1, SKIN); body.rect(48, 42, 5, 1, SKIN[3]); body.set(50, 41, SKIN[0])
+    grip(body, 50, 42)
+    staff_shaft(body, 49, 14, 40, 45)
     # cabelo atras
     ell(body, 25.5, 28, 3.6, 7.5, BEARD); ell(body, 38.5, 28, 3.6, 7.5, BEARD)
     # orelhas
@@ -357,8 +426,7 @@ def front(f):
     for x0 in (27, 33):
         body.rect(x0, 21, 5, 2, BEARD[1]); body.rect(x0, 22, 5, 1, BEARD[2]); body.set(x0 + (0 if x0 == 27 else 4), 20, BEARD[1])
     # olhos
-    for ex in (29, 35):
-        body.rect(ex, 24, 2, 2, DARK); body.set(ex, 24, (0x55, 0x66, 0x99)); body.set(ex + 1, 26, SKIN[3])
+    eye(body, 28, 24); eye(body, 34, 24, True)
     # nariz e bochechas
     ell(body, 32, 27.3, 2.2, 2.3, [sh(SKIN[1], .02), SKIN[1], (0xEE, 0xA8, 0x8A), (0xD8, 0x8C, 0x72), SKIN[4]])
     body.set(31, 26, SKIN[0])
@@ -376,62 +444,79 @@ def front(f):
     # chapeu
     hat(body, 32, 15, [(32, 12), (31, 5.5), (23, 3.5), (12.5, 10)], 9.4, 0.9, 17.5, 4.4, (30, 8), ph)
     out.blit(body, 0, bob)
-    return out, (50.5, 6)
+    return out, (50.5, 6 + bob)
 
 
 # ------------------------------------------------------------------ COSTAS
+BACKROBE = ramp((0x33, 0x55, 0xC8))
+
+
 def back(f):
     out = Buf()
     body = Buf()
     bob = -2 if f in (1, 3) else 0
     st = {0: 0, 1: 1, 2: 0, 3: -1}[f]
     ph = f * 1.3
-    staff(out, 12, 14, 59, 6)
-    for cx, fw in ((24, st), (36, -st)):
-        bb = 58 + (1 if fw == 1 else -3 if fw == -1 else 0)
-        boot(out, cx, 48, bb, 3)
-    # tunica e capa
+    for cx, fw in ((25, st), (39, -st)):
+        boot_front(out, cx, fw)
+    staff(body, 12, 14, 60, 6)
     rows = robe_rows(32, 29, 54, 10.5, 18.5)
-    robe_body(body, rows, 53, ph, CAPE, (0.5,), 0.0)
-    for y in range(36, 53):
-        body.set(32, y, CAPE[4]); body.set(31, y, CAPE[1] if y % 2 else CAPE[2])
-    # cinto + laco atras
-    for y in range(39, 43):
+    robe_body(body, rows, 53, ph, BACKROBE, (0.27, 0.73), 0.0)
+    for y in range(34, 50):
+        body.set(32, y, BACKROBE[4]); body.set(31, y, BACKROBE[1] if y % 3 else BACKROBE[2])
+    # brasao dourado
+    cx, cy = 32, 46
+    for y in range(cy - 6, cy + 7):
+        for x in range(cx - 6, cx + 7):
+            n = ((x + .5 - cx) / 4.3) ** 2 + ((y + .5 - cy) / 4.3) ** 2
+            if .5 < n <= 1:
+                body.set(x, y, GOLD[0] if (x < cx and y < cy) else GOLD[3] if (x >= cx and y >= cy) else GOLD[2])
+            elif n <= .5:
+                body.set(x, y, BACKROBE[4])
+    star(body, cx, cy)
+    # cinto, no e pontas
+    for y in range(37, 40):
         xl, xr = rows[y]
         for x in range(int(xl) + 1, int(xr)):
-            body.set(x, y, LEA[1] if y == 39 else LEA[2] if y < 42 else LEA[4])
-    ell(body, 29, 44, 2.4, 3.6, LEA); ell(body, 35, 44.5, 2.4, 3.6, LEA)
-    body.rect(30, 39, 4, 4, GOLD[2]); body.set(30, 39, GOLD[0])
-    # manto
+            body.set(x, y, LEA[1] if y == 37 else LEA[2] if y == 38 else LEA[4])
+        for x in range(int(xl) + 3, int(xr) - 1, 4):
+            body.set(x, 38, LEA[3])
+    body.rect(30, 40, 2, 4, LEA[3]); body.rect(34, 40, 2, 3, LEA[3]); body.set(30, 43, LEA[4]); body.set(35, 42, LEA[4])
+    ell(body, 32.5, 38.5, 3.0, 2.4, LEA); body.set(31, 37, LEA[0]); body.rect(32, 38, 2, 1, GOLD[2])
+    # bracos (antes do manto, que cobre os ombros)
+    hy = 47 + (-2 if st == 1 else 2 if st == -1 else 0)
+    s_ = curve([(42, 32), (46.5, 36), (48, 41), (47.5, hy - 4)], 4.8, 5.4, 40, 1.0)
+    tube(body, s_, ROBE, bands=[(0.78, 0.97, GOLD)])
+    ell(body, 47.5, hy, 3.1, 3.5, SKIN); body.set(46, hy + 2, SKIN[3]); body.set(48, hy + 1, SKIN[3])
+    s_ = curve([(22, 32), (18, 35), (17.5, 38), (15.5, 40)], 4.8, 5.2, 40, 1.0)
+    tube(body, s_, ROBE, bands=[(0.74, 0.95, GOLD)])
+    grip(body, 13, 42)
+    # manto sobre os ombros + gola
     ell(body, 32, 31, 14, 5, MANT)
     for x in range(18, 46):
         nx = (x + .5 - 32) / 14.0
         if abs(nx) < 1:
             yy = int(31 + 5 * math.sqrt(1 - nx * nx))
             body.set(x, yy, GOLD[2]); body.set(x, yy - 1, GOLD[3] if x % 3 == 0 else GOLD[2])
-    # bracos
-    hy = 47 + (-2 if st == -1 else 2 if st == 1 else 0)
-    s = curve([(42, 31), (48.5, 35), (48.5, 41), (47, hy - 4)], 4.6, 5.6, 40, 1.0)
-    tube(body, s, ROBE, bands=[(0.78, 0.97, GOLD)])
-    ell(body, 47, hy, 3.1, 3.5, SKIN)
-    s = curve([(22, 31), (15.5, 33), (14, 36), (13, 40)], 4.6, 5.0, 40, 1.0)
-    tube(body, s, ROBE, bands=[(0.78, 0.97, GOLD)])
-    ell(body, 12.5, 42.5, 3.3, 3.1, SKIN); body.rect(10, 42, 5, 1, SKIN[3])
-    # cabelo comprido
-    pts = [(24.5, 20), (39.5, 20), (41.5, 29), (40, 38), (36.5, 43), (32, 40.5), (27.5, 43), (24, 38), (22.5, 29)]
+    ell(body, 32, 28.3, 8.2, 3.0, MANT)
+    # cabelo branco em mechas, com pontas
+    sway = 1 if f == 1 else -1 if f == 3 else 0
+    pts = [(26, 19), (38, 19), (39.5, 25), (38.5, 31), (37, 36), (35.5, 40), (34, 37), (32 + sway, 42), (30, 37), (28.5, 40), (27, 36), (25.5, 31), (24.5, 25)]
     m = pmask(pts)
 
     def fn(fr, x, y):
-        t = 0 if fr < .1 else 1 if fr < .35 else 2 if fr < .62 else 3 if fr < .88 else 4
-        if (x in (28, 31, 34, 37)) and y > 28 and (y + x) % 9 != 0:
+        t = 0 if fr < .12 else 1 if fr < .4 else 2 if fr < .66 else 3 if fr < .92 else 4
+        k = (x + y // 6) % 4
+        if k == 0 and y > 23:
             t = min(4, t + 1)
+        elif k == 2 and y > 23:
+            t = max(0, t - 1)
         return t
     paint_frac(body, m, BEARD, fn)
-    body.rect(24, 30, 16, 1, BEARD[4])  # sombra do manto na nuca
     # chapeu (ponta cai para a direita de quem ve)
-    hat(body, 32, 15, [(32, 12), (33, 5.5), (41, 3.5), (51.5, 10)], 9.4, 0.9, 17.5, 4.4, None, ph)
+    hat(body, 32, 15, [(32, 12), (33, 5.5), (41, 3.5), (51.5, 10)], 9.4, 0.9, 17.5, 4.4, None, ph, buckle=False)
     out.blit(body, 0, bob)
-    return out, (13.5, 6)
+    return out, (13.5, 6 + bob)
 
 
 # ------------------------------------------------------------------ LADO (direita)
@@ -441,7 +526,7 @@ def side(f):
     bob = -2 if f in (1, 3) else 0
     ph = f * 1.3
     sw = {0: 0, 1: -2, 2: 0, 3: 2}[f]
-    staff(out, 46, 14, 59, 6)
+    staff(body, 46, 14, 60, 6)
     # botas: (x, yt, yb) longe e perto
     if f == 1:
         far = (20, 49, 56); near = (35, 48, 59)
@@ -449,8 +534,8 @@ def side(f):
         far = (35, 48, 59); near = (21, 49, 56)
     else:
         far = (30, 48, 58); near = (26, 48, 58)
-    boot(out, far[0], far[1], far[2], 6, dark=0.18)
-    boot(out, near[0], near[1], near[2], 6)
+    boot_side(out, far[0], far[1], far[2], 0.18)
+    boot_side(out, near[0], near[1], near[2])
     # braco de tras
     s = curve([(29, 32), (27, 37), (23 + sw * .5, 42), (22 + sw, 46 + (0 if f in (0, 2) else -1))], 4.2, 5.0, 40, 1.0)
     tube(body, s, ROBE, bands=[(0.78, 0.97, GOLD)])
@@ -471,8 +556,7 @@ def side(f):
         for x in range(int(xl) + 1, int(xr) + 1):
             body.set(x, y, LEA[1] if y == 39 else LEA[2] if y < 42 else LEA[4])
     body.rect(36, 38, 4, 6, GOLD[2]); body.rect(36, 38, 4, 1, GOLD[0]); body.rect(36, 43, 4, 1, GOLD[4]); body.rect(37, 40, 2, 2, LEA[4])
-    body.rect(24, 42, 8, 8, LEA[2]); body.rect(24, 42, 2, 8, LEA[1]); body.rect(30, 42, 2, 8, LEA[3])
-    body.rect(24, 42, 8, 3, LEA[3]); body.rect(24, 45, 8, 1, LEA[4]); body.rect(27, 45, 2, 2, GOLD[2]); body.rect(24, 49, 8, 1, LEA[4])
+    pouch(body, 25, 43, 6, 6)
     # manto
     ell(body, 31.5, 31, 8.5, 4.6, MANT)
     for x in range(23, 41):
@@ -481,9 +565,9 @@ def side(f):
             yy = int(31 + 4.6 * math.sqrt(1 - nx * nx))
             body.set(x, yy, GOLD[2]); body.set(x, yy - 1, GOLD[3] if x % 3 == 0 else GOLD[2])
     # braco da frente segura o cajado
-    s = curve([(30, 33), (33, 41), (40, 45), (46.5, 43.5)], 4.6, 5.3, 40, 1.0)
+    s = curve([(30, 33), (33, 41), (38, 44.5), (44.5, 43)], 4.6, 5.3, 40, 1.0)
     tube(body, s, ROBE, bands=[(0.76, 0.95, GOLD)])
-    ell(body, 47.5, 43.5, 3.4, 3.1, SKIN); body.rect(45, 43, 5, 1, SKIN[3]); body.set(47, 42, SKIN[0])
+    grip(body, 47, 43)
     # cabelo atras da cabeca
     ell(body, 29.5, 27, 6, 8.5, BEARD)
     for yy in range(22, 35):
@@ -493,7 +577,7 @@ def side(f):
     ell(body, 41.2, 27, 2.6, 2.4, [SKIN[1], SKIN[1], (0xEE, 0xA8, 0x8A), (0xD8, 0x8C, 0x72), SKIN[4]])
     body.set(40, 26, SKIN[0])
     ell(body, 31.2, 25.5, 1.5, 2.3, SKIN)
-    body.rect(36, 24, 2, 2, DARK); body.set(36, 24, (0x55, 0x66, 0x99))
+    body.rect(36, 23, 4, 1, SKIN[4]); body.rect(37, 24, 3, 2, (0xF6, 0xF6, 0xFA)); body.rect(38, 24, 2, 2, (0x2F, 0x6D, 0xB5)); body.set(39, 25, DARK); body.set(38, 24, (0x9C, 0xD0, 0xFF))
     body.rect(35, 21, 6, 2, BEARD[1]); body.rect(35, 22, 6, 1, BEARD[2]); body.set(41, 21, BEARD[1])
     body.rect(37, 28, 2, 1, BLUSH)
     ell(body, 39.5, 30, 3.8, 2.0, BEARD)
@@ -503,7 +587,7 @@ def side(f):
     # chapeu: ponta cai para tras
     hat(body, 33.5, 15.5, [(33.5, 12.5), (34, 5.5), (24, 3.5), (12, 10.5)], 9.0, 0.9, 15, 4.0, (31, 8), ph)
     out.blit(body, 0, bob)
-    return out, (47.5, 6)
+    return out, (47.5, 6 + bob)
 
 
 # ------------------------------------------------------------------ saida

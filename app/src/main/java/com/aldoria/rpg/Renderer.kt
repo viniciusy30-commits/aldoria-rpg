@@ -444,13 +444,11 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         val bm = arr[cr.dir][frame]
         c.drawBitmap(bm, sx, sy, if (cr.flash > 0f) flashP else bp)
         if (mage) {
-            val s = t / 32f
-            val hx = when (cr.dir) {
-                1 -> 25f
-                3 -> 7f
-                else -> 26f
-            }
-            val hy = 4f + (if (frame == 1 || frame == 3) -1f else 0f)
+            val s = t / 64f
+            val di = if (cr.dir == 3) 1 else cr.dir
+            val ox = MageData.ORB[(di * 4 + frame) * 2]
+            val hx = if (cr.dir == 3) 64f - ox else ox
+            val hy = MageData.ORB[(di * 4 + frame) * 2 + 1]
             val pulse = 0.8f + 0.2f * sin(g.time * 6f)
             glowAdd(c, sx + hx * s, sy + hy * s, t * (0.3f + 0.45f * night) * pulse, 0xFFFF9A3D.toInt(), 0.9f)
             if (night > 0.12f) addLight(sx + hx * s, sy + hy * s, t * 2.0f, 0)

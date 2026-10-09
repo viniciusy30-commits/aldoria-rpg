@@ -122,12 +122,11 @@ object Art {
 
     /** [direção 0 cima, 1 direita, 2 baixo, 3 esquerda][quadro 0..3] */
     fun mage(size: Int): Array<Array<Bitmap>> {
-        val s = size / 32
-        val up = Array(4) { f -> ArtSprites.mage(0, f).toBitmap(s) }
+        val up = Array(4) { f -> ArtSprites.mage(0, f).toBitmapSize(size) }
         val rightPix = Array(4) { f -> ArtSprites.mage(1, f) }
-        val down = Array(4) { f -> ArtSprites.mage(2, f).toBitmap(s) }
-        val right = Array(4) { f -> rightPix[f].toBitmap(s) }
-        val left = Array(4) { f -> ArtNature.mirror(rightPix[f]).toBitmap(s) }
+        val down = Array(4) { f -> ArtSprites.mage(2, f).toBitmapSize(size) }
+        val right = Array(4) { f -> rightPix[f].toBitmapSize(size) }
+        val left = Array(4) { f -> ArtNature.mirror(rightPix[f]).toBitmapSize(size) }
         return arrayOf(up, right, down, left)
     }
 

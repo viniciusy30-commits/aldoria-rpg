@@ -1,3 +1,11 @@
+#id 2026-10-08-b
+#titulo Mago refeito: sprite nova em alta resolução
+- O mago agora é desenhado em 64 x 64 pixels, o dobro de detalhes de antes, com as três direções refeitas do zero (a esquerda é o espelho da direita).
+- Chapéu de aba larga com ponta caída, faixa e fivela de ouro e estrela; barba e bigode brancos com fios e sombreado; sobrancelhas, olhos, nariz e bochechas.
+- Manto com gola dourada, dobras e barra bordada; cinto com fivela, bolsa de couro e poção na cintura; mangas largas com punhos de ouro.
+- Cajado com garras de ouro e cristal facetado que brilha. De lado o mago tem capa que balança; de costas, cabelo comprido e laço do cinto.
+- Caminhada com 4 quadros em cada direção: botas alternando, corpo subindo e descendo, barba e capa balançando.
+
 #id 2026-10-08-a
 #titulo Arte nova: mundo, casas e personagens bem mais detalhados
 - Pixel art refeita em alta resolução: o mago ganhou chapéu torto com estrela, barba, manto com dobras e barra dourada, cinto, bolsa, botas e cajado com cristal que brilha. Ele anda com 4 quadros de animação em cada direção.

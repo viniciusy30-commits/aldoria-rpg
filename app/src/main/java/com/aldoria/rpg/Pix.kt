@@ -204,4 +204,11 @@ class PixBuf(val w: Int, val h: Int) {
         if (scale <= 1) return small
         return Bitmap.createScaledBitmap(small, w * scale, h * scale, false)
     }
+
+    /** Estica para um tamanho final qualquer (sem suavizar). */
+    fun toBitmapSize(target: Int): Bitmap {
+        val small = Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
+        if (target == w) return small
+        return Bitmap.createScaledBitmap(small, target, target, false)
+    }
 }

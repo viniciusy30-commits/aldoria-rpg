@@ -1,29 +1,24 @@
+#id 2026-10-09-c
+#titulo Visual estilo Hytale!
+- Texturas novas, suaves e detalhadas (32x32) em todos os blocos
+- Grama alta e flores balançando ao vento
+- Folhas das árvores e a água em movimento
+- Mão em 1ª pessoa com dedos e polegar segurando os itens
+- Espada, machado, cajado e picareta muito mais detalhados
+- Personagem com pose no ar e respiração parada
+
 #id 2026-10-09-b
-#titulo Mago: cajado novo, bolsa e poção no cinto, costas refeitas
-- O mago agora é desenhado em 64 x 64 pixels, o dobro de detalhes de antes, com as três direções refeitas do zero (a esquerda é o espelho da direita).
-- Chapéu de aba larga com ponta caída, faixa e fivela de ouro e estrela; barba e bigode brancos com fios e sombreado; sobrancelhas, olhos, nariz e bochechas.
-- Manto com gola dourada, dobras e barra bordada; cinto com fivela, bolsa de couro e poção na cintura; mangas largas com punhos de ouro.
-- Cajado com garras de ouro e cristal facetado que brilha. De lado o mago tem capa que balança; de costas, cabelo comprido e laço do cinto.
-- Caminhada com 4 quadros em cada direção: botas alternando, corpo subindo e descendo, barba e capa balançando.
+#titulo Texturas, mochila e armas!
+- Todos os blocos agora têm textura própria
+- Braço em 1ª pessoa segurando o item, com balanço e animações
+- Mochila com armas: espada, machado, cajado de estrelas e picareta
+- Personagem mais fofinho, com carinha e cachecol
+- Tremor de tela, partículas e estrelas mágicas
 
-#id 2026-10-08-a
-#titulo Arte nova: mundo, casas e personagens bem mais detalhados
-- Pixel art refeita em alta resolução: o mago ganhou chapéu torto com estrela, barba, manto com dobras e barra dourada, cinto, bolsa, botas e cajado com cristal que brilha. Ele anda com 4 quadros de animação em cada direção.
-- O rato ficou bem mais bonito: pelo sombreado, orelhas rosadas, olho brilhante, bigodes, dentinho e cauda que balança. Quando morre, deixa um corpinho com poça de sangue.
-- Terreno com transições suaves entre grama, terra, areia, pedra e água, com espuma na margem. A água é animada, tem águas rasas que dá para atravessar, juncos e vitórias-régias.
-- Rio com ponte de madeira na estrada, lago e lagoa. Floresta com carvalhos grandes que balançam, pinheiros, árvores secas, arbustos floridos, pedras com musgo, troncos, tocos, cogumelos, samambaias e flores.
-- Cidade murada com cerca e portões, praça de pedras, fonte animada, estátua do mago, bancos, vasos de flores, barracas de mercado e poço.
-- Casas de verdade: telhado de telha, paredes com vigas, janelas com floreiras e venezianas, tochas acesas, portas de madeira, placas e mobília dentro (camas, estantes de livros e poções, lareira, balcão de taverna, caldeirão, barris, baús e tapetes).
-- Árvores e construções passam na frente e atrás de você de acordo com a posição.
-- Ciclo de dia e noite: o céu escurece, tochas, lampiões, lareiras e janelas iluminam, aparecem vaga-lumes à noite e borboletas de dia. A cada 5 minutos, um dia completo.
-
-#id 2026-10-07-a
-#titulo Primeira versão de Aldoria
-- Você é um Mago em Aldoria, uma cidade protegida cercada de campos, florestas e lagos. Tudo é desenhado no próprio app, em pixel art.
-- Controle: direcional na esquerda, toque no mapa para andar, toque em um monstro para mirar. O botão de mira escolhe o monstro mais perto.
-- Seis magias na direita: Exura (cura), Exori flam (golpe de fogo), Exori vis (golpe de energia), Exevo flam hur (onda de fogo), Utani hur (velocidade) e Utamo vita (escudo mágico). Algumas abrem em níveis mais altos.
-- Seu cajado ataca sozinho o monstro mirado, de graça. Cada magia gasta mana e treina o nível mágico.
-- O Rato anda pelos campos, persegue você, morre e deixa um corpo: toque no corpo para pegar o loot (moedas de ouro e queijo).
-- Experiência, níveis, vida e mana como no Tibia. Morrer custa 10% da experiência e você volta ao templo.
-- Mochila e tela do personagem, lista de batalha, minimapa, mensagens do jogo e salvamento automático.
-- Atualize pelo próprio app: botão "Verificar atualização" no menu inicial.
+#id 2026-10-09-a
+#titulo Primeira versão 3D!
+- Mundo de blocos 3D com ilha, praia, árvores e água
+- Personagem animado com espada e câmera 1ª/3ª pessoa
+- Slimes inimigos para lutar
+- Quebre e coloque blocos de decoração
+- Atualização pelo próprio app

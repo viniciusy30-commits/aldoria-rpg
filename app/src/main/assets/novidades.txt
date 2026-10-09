@@ -1,3 +1,14 @@
+#id 2026-10-08-a
+#titulo Arte nova: mundo, casas e personagens bem mais detalhados
+- Pixel art refeita em alta resolução: o mago ganhou chapéu torto com estrela, barba, manto com dobras e barra dourada, cinto, bolsa, botas e cajado com cristal que brilha. Ele anda com 4 quadros de animação em cada direção.
+- O rato ficou bem mais bonito: pelo sombreado, orelhas rosadas, olho brilhante, bigodes, dentinho e cauda que balança. Quando morre, deixa um corpinho com poça de sangue.
+- Terreno com transições suaves entre grama, terra, areia, pedra e água, com espuma na margem. A água é animada, tem águas rasas que dá para atravessar, juncos e vitórias-régias.
+- Rio com ponte de madeira na estrada, lago e lagoa. Floresta com carvalhos grandes que balançam, pinheiros, árvores secas, arbustos floridos, pedras com musgo, troncos, tocos, cogumelos, samambaias e flores.
+- Cidade murada com cerca e portões, praça de pedras, fonte animada, estátua do mago, bancos, vasos de flores, barracas de mercado e poço.
+- Casas de verdade: telhado de telha, paredes com vigas, janelas com floreiras e venezianas, tochas acesas, portas de madeira, placas e mobília dentro (camas, estantes de livros e poções, lareira, balcão de taverna, caldeirão, barris, baús e tapetes).
+- Árvores e construções passam na frente e atrás de você de acordo com a posição.
+- Ciclo de dia e noite: o céu escurece, tochas, lampiões, lareiras e janelas iluminam, aparecem vaga-lumes à noite e borboletas de dia. A cada 5 minutos, um dia completo.
+
 #id 2026-10-07-a
 #titulo Primeira versão de Aldoria
 - Você é um Mago em Aldoria, uma cidade protegida cercada de campos, florestas e lagos. Tudo é desenhado no próprio app, em pixel art.

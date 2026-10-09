@@ -8,12 +8,14 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
+import android.graphics.PorterDuffXfermode
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
 import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
@@ -55,11 +57,21 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
     val itemKeys = ArrayList<String>()
     private var modalStart = -1
 
-    private var tiles: Array<Array<Bitmap>>? = null
+    private var groundB: Array<Array<Bitmap>>? = null
+    private var edgeB: Array<Array<Array<Bitmap>>>? = null
+    private var objB: Array<Array<Bitmap?>>? = null
+    private var decoB: Array<Array<Bitmap?>>? = null
     private var mageB: Array<Array<Bitmap>>? = null
     private var ratB: Array<Array<Bitmap>>? = null
     private var ratDeadB: Bitmap? = null
     private var miniB: Bitmap? = null
+    private val lights = FloatArray(96 * 4)
+    private var nLights = 0
+    private var night = 0f
+    private var dusk = 0f
+    private val glowP = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val addMode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+    private val PRIO = intArrayOf(0, 1, 2, 3, 4, 5, -1, -1, -1)
     private var vig: RadialGradient? = null
 
     private val p = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -79,11 +91,14 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
     fun onSize(nw: Int, nh: Int) {
         w = nw
         h = nh
-        var ts = ((h / 9f).toInt() / 16) * 16
-        if (ts < 32) ts = 32
-        if (ts != tile || tiles == null) {
+        var ts = ((h / 9f).toInt() / 32) * 32
+        if (ts < 64) ts = 64
+        if (ts != tile || groundB == null) {
             tile = ts
-            tiles = Art.tiles(tile)
+            groundB = Art.ground(tile)
+            edgeB = Art.edges(tile)
+            objB = Art.objects(tile)
+            decoB = Art.decals(tile)
             mageB = Art.mage(tile)
             ratB = Art.rat(tile)
             ratDeadB = Art.ratDead(tile)
@@ -100,23 +115,7 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         val wd = g.world
         val b = Bitmap.createBitmap(wd.w, wd.h, Bitmap.Config.ARGB_8888)
         for (y in 0 until wd.h) {
-            for (x in 0 until wd.w) {
-                val col = when (wd.tiles[y * wd.w + x]) {
-                    Tl.WATER -> 0xFF2F6FD0.toInt()
-                    Tl.SAND -> 0xFFE3CC8B.toInt()
-                    Tl.GRASS, Tl.FLOWER -> 0xFF3F8531.toInt()
-                    Tl.TREE -> 0xFF1F5A24.toInt()
-                    Tl.BUSH -> 0xFF2E7A33.toInt()
-                    Tl.ROCK -> 0xFF7A7A82.toInt()
-                    Tl.DIRT -> 0xFF8A6A45.toInt()
-                    Tl.STONE -> 0xFFA0A0A8.toInt()
-                    Tl.WOOD -> 0xFF8A5C2D.toInt()
-                    Tl.WALL -> 0xFF5C4332.toInt()
-                    Tl.DOOR -> 0xFF6B4423.toInt()
-                    else -> 0xFF5BA0F0.toInt()
-                }
-                b.setPixel(x, y, col)
-            }
+            for (x in 0 until wd.w) b.setPixel(x, y, wd.miniColor(x, y))
         }
         return b
     }
@@ -206,8 +205,33 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
 
     // ------------------------------------------------------------------ quadro principal
 
+    private fun rowOf(fy: Float): Int = Math.ceil((fy - 0.001f).toDouble()).toInt()
+
+    private fun isWallish(o: Int): Boolean = o == Ob.WALL || o == Ob.DOOR
+    private fun isFenceish(o: Int): Boolean = o == Ob.FENCE || o == Ob.LAMP
+
+    private fun addLight(x: Float, y: Float, r: Float, kind: Int) {
+        if (nLights >= 96) return
+        val i = nLights * 4
+        lights[i] = x
+        lights[i + 1] = y
+        lights[i + 2] = r
+        lights[i + 3] = kind.toFloat()
+        nLights++
+    }
+
+    private fun glowAdd(c: Canvas, x: Float, y: Float, r: Float, col: Int, a: Float) {
+        glowP.style = Paint.Style.FILL
+        glowP.xfermode = addMode
+        for (k in 0 until 5) {
+            glowP.color = withAlpha(col, a * 0.11f)
+            c.drawCircle(x, y, r * (1f - k * 0.2f), glowP)
+        }
+        glowP.xfermode = null
+    }
+
     fun draw(c: Canvas) {
-        if (w == 0 || tiles == null) return
+        if (w == 0 || groundB == null) return
         val pl = g.player
         camX = pl.fx + 0.5f
         camY = pl.fy + 0.5f
@@ -219,12 +243,19 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         battleList.clear()
         itemKeys.clear()
         modalStart = -1
+        nLights = 0
+        val phase = (g.time / 300f + 0.42f) % 1f
+        var d = 0.5f + 0.65f * sin((phase - 0.25f) * TAU)
+        d = if (d < 0f) 0f else if (d > 1f) 1f else d
+        night = 1f - d
+        dusk = 1f - abs(d - 0.5f) * 2f
 
         c.drawColor(0xFF000000.toInt())
-        drawWorld(c)
-        drawCorpses(c)
-        drawCreatures(c)
+        drawGround(c)
+        drawSorted(c)
         drawProjectiles(c)
+        drawCritters(c)
+        drawDaylight(c)
         drawParticles(c)
         drawNames(c)
         drawTexts(c)
@@ -247,8 +278,10 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         if (g.dead) drawDead(c)
     }
 
-    private fun drawWorld(c: Canvas) {
-        val tb = tiles ?: return
+    private fun drawGround(c: Canvas) {
+        val gb = groundB ?: return
+        val eb = edgeB ?: return
+        val db = decoB ?: return
         val t = tile
         val halfW = w / 2f
         val halfH = h / 2f
@@ -257,23 +290,42 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         val y0 = floor(camY - halfH / t).toInt() - 1
         val y1 = ceil(camY + halfH / t).toInt() + 1
         val wd = g.world
+        val frame = (g.time * 2.2f).toInt()
         for (ty in y0..y1) {
             for (tx in x0..x1) {
-                if (tx < 0 || ty < 0 || tx >= wd.w || ty >= wd.h) continue
-                val sx = Math.round((tx - camX) * t + halfW)
-                val sy = Math.round((ty - camY) * t + halfH)
-                val id = wd.tiles[ty * wd.w + tx]
-                var v = hash2(tx, ty, 5) and 3
-                if (id == Tl.WATER) v = ((g.time * 2.2f).toInt() + tx + ty * 2) and 3
-                if (id == Tl.FOUNTAIN) v = (g.time * 4f).toInt() and 1
-                c.drawBitmap(tb[id][v], sx.toFloat(), sy.toFloat(), bp)
+                if (!wd.inside(tx, ty)) continue
+                val i = ty * wd.w + tx
+                val sx = Math.round((tx - camX) * t + halfW).toFloat()
+                val sy = Math.round((ty - camY) * t + halfH).toFloat()
+                val gid = wd.ground[i]
+                var v = wd.vari[i] and 7
+                if (gid == Gd.WATER || gid == Gd.SHALLOW) v = (frame + tx + ty * 2) and 3
+                c.drawBitmap(gb[gid][v], sx, sy, bp)
+                val pr = PRIO[gid]
+                if (pr >= 0) {
+                    for (side in 0 until 4) {
+                        val ng = wd.groundAt(tx + DX[side], ty + DY[side])
+                        if (ng >= 1 && ng <= 5 && PRIO[ng] > pr) {
+                            val ev = if (ng >= Gd.SHALLOW) (frame + tx + ty * 2) and 3 else (wd.vari[i] and 3)
+                            c.drawBitmap(eb[ng - 1][side][ev], sx, sy, bp)
+                        }
+                    }
+                }
+                val dc = wd.deco[i]
+                if (dc != Dc.NONE) {
+                    val row = db[dc]
+                    var bm = row[(wd.vari[i] ushr 1) and 3]
+                    if (bm == null) bm = row[0]
+                    if (bm != null) c.drawBitmap(bm, sx, sy, bp)
+                }
             }
         }
+        drawCorpses(c)
     }
 
     private fun onScreen(x: Float, y: Float): Boolean {
         val t = tile.toFloat()
-        return x > -t * 2 && x < w + t && y > -t * 2 && y < h + t
+        return x > -t * 2 && x < w + t && y > -t * 3 && y < h + t
     }
 
     private fun drawCorpses(c: Canvas) {
@@ -290,84 +342,202 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
                 val a = 0.5f + 0.5f * sin(g.time * 5f + cp.x)
                 p.style = Paint.Style.FILL
                 p.color = withAlpha(0xFFFFE066.toInt(), a)
-                val r = t * 0.06f * (0.6f + a)
-                c.drawCircle(sx + t * 0.5f, sy + t * 0.55f - a * t * 0.1f, r, p)
+                c.drawCircle(sx + t * 0.5f, sy + t * 0.55f - a * t * 0.12f, t * 0.06f * (0.6f + a), p)
             }
         }
     }
 
-    private fun drawCreatures(c: Canvas) {
-        val pl = g.player
+    private fun drawSorted(c: Canvas) {
+        val ob = objB ?: return
         val rb = ratB ?: return
         val mb = mageB ?: return
-        for (m in g.monsters) {
-            if (m.alive && m.fy < pl.fy) drawCreature(c, m, rb, false)
+        val t = tile
+        val halfW = w / 2f
+        val halfH = h / 2f
+        val x0 = floor(camX - halfW / t).toInt() - 1
+        val x1 = ceil(camX + halfW / t).toInt() + 1
+        val y0 = floor(camY - halfH / t).toInt() - 1
+        val y1 = ceil(camY + halfH / t).toInt() + 2
+        val wd = g.world
+        val pl = g.player
+        val plRow = rowOf(pl.fy)
+        for (ty in y0..y1) {
+            for (tx in x0..x1) {
+                if (!wd.inside(tx, ty)) continue
+                val i = ty * wd.w + tx
+                val o = wd.obj[i]
+                if (o != Ob.NONE) drawObject(c, ob, o, tx, ty, i)
+            }
+            for (m in g.monsters) {
+                if (m.alive && rowOf(m.fy) == ty) drawCreature(c, m, rb, false)
+            }
+            if (plRow == ty) drawCreature(c, pl, mb, true)
         }
-        drawCreature(c, pl, mb, true)
-        for (m in g.monsters) {
-            if (m.alive && m.fy >= pl.fy) drawCreature(c, m, rb, false)
+    }
+
+    private fun drawObject(c: Canvas, ob: Array<Array<Bitmap?>>, o: Int, tx: Int, ty: Int, i: Int) {
+        val wd = g.world
+        val t = tile
+        val s = t / 32f
+        var v = wd.ovar[i]
+        val sx0 = Math.round((tx - camX) * t + w / 2f).toFloat()
+        val sy0 = Math.round((ty - camY) * t + h / 2f).toFloat()
+        val hasN = isWallish(wd.objAt(tx, ty - 1))
+        val hasS = isWallish(wd.objAt(tx, ty + 1))
+        if (o == Ob.WALL) {
+            val combo = (if (hasN) 1 else 0) + (if (hasS) 2 else 0)
+            val kind = wd.ovar[i]
+            if (kind == 1) {
+                v = 4 + combo
+                addLight(sx0 + 16f * s, sy0 + (if (hasN) 8f else 19f) * s, t * 1.1f, 2)
+            } else if (kind == 2) {
+                v = 8 + combo + (if (((g.time * 6f).toInt() + tx) % 2 == 1) 4 else 0)
+                addLight(sx0 + 16f * s, sy0 + (if (hasN) 3f else 14f) * s, t * 2.0f, 0)
+            } else {
+                v = combo
+            }
+        } else if (o == Ob.DOOR) {
+            v = if (hasN) 1 else 0
+        } else if (o == Ob.FOUNTAIN) {
+            v = (g.time * 5f).toInt() and 3
+        } else if (o == Ob.FIRE) {
+            v = ((g.time * 4f).toInt() + tx) and 1
+        } else if (o == Ob.CAULDRON) {
+            v = ((g.time * 3f).toInt() + tx) and 1
+        } else if (o == Ob.FENCE) {
+            v = (if (isFenceish(wd.objAt(tx, ty - 1))) 1 else 0) or
+                (if (isFenceish(wd.objAt(tx + 1, ty))) 2 else 0) or
+                (if (isFenceish(wd.objAt(tx, ty + 1))) 4 else 0) or
+                (if (isFenceish(wd.objAt(tx - 1, ty))) 8 else 0)
+        }
+        if (v < 0 || v > 15) v = 0
+        val arr = ob[o]
+        var bm = arr[v]
+        if (bm == null) bm = arr[0]
+        if (bm == null) return
+        val sy = sy0 - (bm.height - t)
+        if (o == Ob.LAMP) addLight(sx0 + 16f * s, sy + 11f * s, t * 2.6f, 1)
+        if (o == Ob.FIRE) addLight(sx0 + 16f * s, sy + 22f * s, t * 2.4f, 0)
+        if (o == Ob.CAULDRON) addLight(sx0 + 16f * s, sy + 15f * s, t * 1.6f, 3)
+        if (o == Ob.OAK || o == Ob.PINE || o == Ob.BUSH || o == Ob.BUSHF) {
+            val k = sin(g.time * 1.3f + tx * 1.7f + ty * 0.9f) * 0.012f
+            c.save()
+            c.translate(sx0, sy + bm.height)
+            c.skew(k, 0f)
+            c.drawBitmap(bm, 0f, -bm.height.toFloat(), bp)
+            c.restore()
+        } else {
+            c.drawBitmap(bm, sx0, sy, bp)
         }
     }
 
     private fun drawCreature(c: Canvas, cr: Creature, arr: Array<Array<Bitmap>>, mage: Boolean) {
         val t = tile.toFloat()
         val sx = Math.round(sxOf(cr.fx)).toFloat()
-        val sy0 = Math.round(syOf(cr.fy)).toFloat()
-        if (!onScreen(sx, sy0)) return
-        val frame = if (cr.moving) ((cr.walk * 2f).toInt() and 1) else 0
-        val bob = if (cr.moving) -abs(sin(cr.walk * PI_F)) * t * 0.05f else 0f
-        val sy = sy0 + bob
-        // sombra
+        val sy = Math.round(syOf(cr.fy)).toFloat()
+        if (!onScreen(sx, sy)) return
+        val frame = if (cr.moving) ((cr.walk * 2f).toInt() and 3) else 0
         p.style = Paint.Style.FILL
         p.color = 0x55000000
-        rect.set(sx + t * 0.2f, sy0 + t * 0.78f, sx + t * 0.8f, sy0 + t * 0.95f)
+        rect.set(sx + t * 0.18f, sy + t * 0.82f, sx + t * 0.82f, sy + t * 0.98f)
         c.drawOval(rect, p)
         val bm = arr[cr.dir][frame]
         c.drawBitmap(bm, sx, sy, if (cr.flash > 0f) flashP else bp)
-        if (mage) drawStaff(c, cr, sx, sy)
-        // escudo mágico
-        if (mage && g.player.shieldT > 0f) {
-            val a = 0.35f + 0.15f * sin(g.time * 5f)
-            p.color = withAlpha(0xFF6FB6FF.toInt(), a)
-            c.drawCircle(sx + t * 0.5f, sy + t * 0.55f, t * 0.62f, p)
-            p.style = Paint.Style.STROKE
-            p.strokeWidth = max(2f, t * 0.03f)
-            p.color = withAlpha(0xFFBFE0FF.toInt(), 0.8f)
-            c.drawCircle(sx + t * 0.5f, sy + t * 0.55f, t * 0.62f, p)
-            p.style = Paint.Style.FILL
-        }
-        // velocidade: poeira nos pés
-        if (mage && g.player.hasteT > 0f && cr.moving) {
-            p.color = withAlpha(0xFF7CFF8A.toInt(), 0.5f)
-            c.drawCircle(sx + t * 0.5f, sy0 + t * 0.9f, t * 0.07f, p)
+        if (mage) {
+            val s = t / 32f
+            val hx = when (cr.dir) {
+                1 -> 25f
+                3 -> 7f
+                else -> 26f
+            }
+            val hy = 4f + (if (frame == 1 || frame == 3) -1f else 0f)
+            val pulse = 0.8f + 0.2f * sin(g.time * 6f)
+            glowAdd(c, sx + hx * s, sy + hy * s, t * (0.3f + 0.45f * night) * pulse, 0xFFFF9A3D.toInt(), 0.9f)
+            if (night > 0.12f) addLight(sx + hx * s, sy + hy * s, t * 2.0f, 0)
+            if (g.player.shieldT > 0f) {
+                val a = 0.35f + 0.15f * sin(g.time * 5f)
+                p.color = withAlpha(0xFF6FB6FF.toInt(), a)
+                c.drawCircle(sx + t * 0.5f, sy + t * 0.55f, t * 0.62f, p)
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = max(2f, t * 0.03f)
+                p.color = withAlpha(0xFFBFE0FF.toInt(), 0.8f)
+                c.drawCircle(sx + t * 0.5f, sy + t * 0.55f, t * 0.62f, p)
+                p.style = Paint.Style.FILL
+            }
+            if (g.player.hasteT > 0f && cr.moving) {
+                p.color = withAlpha(0xFF7CFF8A.toInt(), 0.5f)
+                c.drawCircle(sx + t * 0.5f, sy + t * 0.92f, t * 0.07f, p)
+            }
         }
     }
 
-    private fun drawStaff(c: Canvas, cr: Creature, sx: Float, sy: Float) {
+    private fun drawCritters(c: Canvas) {
         val t = tile.toFloat()
-        val hx = when (cr.dir) {
-            0 -> 0.20f
-            1 -> 0.86f
-            3 -> 0.14f
-            else -> 0.82f
+        val wd = g.world
+        val tm = g.time
+        if (night < 0.6f) {
+            val cols = intArrayOf(0xFFFFD84A.toInt(), 0xFFFF8FC0.toInt(), 0xFFFFFFFF.toInt(), 0xFF8FC8FF.toInt())
+            for (i in 0 until 5) {
+                val bx = camX + sin(tm * 0.35f + i * 1.9f) * 5.5f + sin(tm * 1.3f + i) * 0.6f
+                val by = camY + cos(tm * 0.31f + i * 2.4f) * 3.2f + cos(tm * 1.7f + i * 2f) * 0.5f
+                if (wd.groundAt(bx.toInt(), by.toInt()) != Gd.GRASS) continue
+                val x = sxOf(bx)
+                val y = syOf(by)
+                val flap = abs(sin(tm * 13f + i * 3f))
+                val wing = t * 0.075f
+                p.style = Paint.Style.FILL
+                p.color = cols[i % 4]
+                rect.set(x - wing * 1.5f * flap - 1f, y - wing, x, y + wing * 0.8f)
+                c.drawOval(rect, p)
+                rect.set(x, y - wing, x + wing * 1.5f * flap + 1f, y + wing * 0.8f)
+                c.drawOval(rect, p)
+                p.color = 0xFF2A1A10.toInt()
+                c.drawRect(x - 1f, y - wing * 0.7f, x + 1f, y + wing * 0.9f, p)
+            }
         }
-        val x = sx + hx * t
-        val y0 = sy + 0.10f * t
-        val y1 = sy + 0.95f * t
-        p.style = Paint.Style.STROKE
-        p.strokeWidth = t * 0.06f
-        p.strokeCap = Paint.Cap.ROUND
-        p.color = 0xFF8B5E3C.toInt()
-        c.drawLine(x, y0 + t * 0.06f, x, y1, p)
-        p.strokeCap = Paint.Cap.BUTT
-        val pulse = 0.75f + 0.25f * sin(g.time * 6f)
+        if (night > 0.35f) {
+            for (i in 0 until 14) {
+                val fx = camX + sin(tm * 0.2f + i * 2.1f) * 7f + sin(tm * 0.9f + i) * 0.8f
+                val fy = camY + cos(tm * 0.23f + i * 1.7f) * 4.2f + cos(tm * 1.1f + i * 1.3f) * 0.7f
+                val a = max(0f, sin(tm * 2.3f + i * 1.3f)) * night
+                if (a < 0.05f) continue
+                val x = sxOf(fx)
+                val y = syOf(fy)
+                glowAdd(c, x, y, t * 0.22f, 0xFFC8FF7A.toInt(), a)
+                p.style = Paint.Style.FILL
+                p.color = withAlpha(0xFFF4FFC0.toInt(), a)
+                c.drawCircle(x, y, max(1.5f, t * 0.018f), p)
+            }
+        }
+    }
+
+    private fun drawDaylight(c: Canvas) {
         p.style = Paint.Style.FILL
-        p.color = withAlpha(0xFFFF9A3D.toInt(), 0.25f * pulse)
-        c.drawCircle(x, y0, t * 0.17f, p)
-        p.color = withAlpha(0xFFFF9A3D.toInt(), 0.55f * pulse)
-        c.drawCircle(x, y0, t * 0.1f, p)
-        p.color = 0xFFFFE0A0.toInt()
-        c.drawCircle(x, y0, t * 0.05f, p)
+        if (night > 0.02f) {
+            p.color = withAlpha(0xFF0A1236.toInt(), night * 0.55f)
+            c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p)
+        }
+        if (dusk > 0.05f) {
+            p.color = withAlpha(0xFFFF7A30.toInt(), dusk * 0.13f)
+            c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p)
+        }
+        if (night > 0.12f) {
+            val k = min(1f, night * 1.6f)
+            for (i in 0 until nLights) {
+                val x = lights[i * 4]
+                val y = lights[i * 4 + 1]
+                val r = lights[i * 4 + 2]
+                val kind = lights[i * 4 + 3].toInt()
+                val fl = 0.88f + 0.12f * sin(g.time * 11f + x * 0.1f)
+                val col = when (kind) {
+                    0 -> 0xFFFF9A4A.toInt()
+                    1 -> 0xFFFFE6A0.toInt()
+                    2 -> 0xFFFFD27A.toInt()
+                    else -> 0xFF7CFF9A.toInt()
+                }
+                glowAdd(c, x, y, r * fl, col, k)
+            }
+        }
     }
 
     private fun drawProjectiles(c: Canvas) {

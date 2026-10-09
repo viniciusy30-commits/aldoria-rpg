@@ -1,0 +1,34 @@
+#id 2026-10-09-d
+#titulo Magias com animações insanas!
+- Bola de fogo viaja até o alvo e explode com onda de choque, brasas, fumaça e chão chamuscado
+- Raio elétrico com ramificações, faíscas e arcos no chão
+- Onda de Fogo com chamas em cada quadrado, frente de calor e fogo que queima os monstros
+- Cura com círculo rúnico, coluna de luz e hélice de brilhos
+- Velocidade deixa rastro fantasma e ventos em espiral
+- Escudo vira um domo hexagonal com ondas de impacto e estilhaça ao acabar
+- Novo botão de mana infinita (∞) no HUD e no menu: libera todas as magias
+
+#id 2026-10-09-c
+#titulo Visual estilo Hytale!
+- Texturas novas, suaves e detalhadas (32x32) em todos os blocos
+- Grama alta e flores balançando ao vento
+- Folhas das árvores e a água em movimento
+- Mão em 1ª pessoa com dedos e polegar segurando os itens
+- Espada, machado, cajado e picareta muito mais detalhados
+- Personagem com pose no ar e respiração parada
+
+#id 2026-10-09-b
+#titulo Texturas, mochila e armas!
+- Todos os blocos agora têm textura própria
+- Braço em 1ª pessoa segurando o item, com balanço e animações
+- Mochila com armas: espada, machado, cajado de estrelas e picareta
+- Personagem mais fofinho, com carinha e cachecol
+- Tremor de tela, partículas e estrelas mágicas
+
+#id 2026-10-09-a
+#titulo Primeira versão 3D!
+- Mundo de blocos 3D com ilha, praia, árvores e água
+- Personagem animado com espada e câmera 1ª/3ª pessoa
+- Slimes inimigos para lutar
+- Quebre e coloque blocos de decoração
+- Atualização pelo próprio app

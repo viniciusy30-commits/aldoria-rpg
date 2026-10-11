@@ -27,11 +27,13 @@ object Ui {
     const val MENU = 2
     const val BAG = 3
     const val TARGET = 4
+    const val CHEAT = 5
     const val SPELL0 = 10
     const val BATTLE0 = 20
     const val MENU_CONT = 30
     const val MENU_SAVE = 31
     const val MENU_EXIT = 32
+    const val MENU_CHEAT = 33
     const val BAG_CLOSE = 40
     const val TAB_BAG = 41
     const val TAB_CHAR = 42
@@ -78,6 +80,16 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
     private val tp = Paint(Paint.ANTI_ALIAS_FLAG)
     private val bp = Paint()
     private val flashP = Paint()
+    private val fxr = SpellFx(g)
+    private val ghostP = Paint()
+    private val GN = 6
+    private val gX = FloatArray(GN)
+    private val gY = FloatArray(GN)
+    private val gD = IntArray(GN)
+    private val gF = IntArray(GN)
+    private val gT = FloatArray(GN) { -100f }
+    private var gi = 0
+    private var lastGhost = 0f
     private val rect = RectF()
     private val rect2 = RectF()
     private val path = Path()
@@ -86,6 +98,7 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
     init {
         tp.typeface = mono
         flashP.colorFilter = PorterDuffColorFilter(Color.argb(170, 255, 70, 70), PorterDuff.Mode.SRC_ATOP)
+        ghostP.colorFilter = PorterDuffColorFilter(Color.argb(150, 90, 255, 140), PorterDuff.Mode.SRC_ATOP)
     }
 
     fun onSize(nw: Int, nh: Int) {
@@ -236,8 +249,9 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         camX = pl.fx + 0.5f
         camY = pl.fy + 0.5f
         if (g.shake > 0f) {
-            camX += (Math.random().toFloat() - 0.5f) * 0.12f
-            camY += (Math.random().toFloat() - 0.5f) * 0.12f
+            val amp = 0.12f * g.shakeAmp * min(1f, g.shake * 5f)
+            camX += (Math.random().toFloat() - 0.5f) * amp
+            camY += (Math.random().toFloat() - 0.5f) * amp
         }
         hits.clear()
         battleList.clear()
@@ -252,10 +266,13 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
 
         c.drawColor(0xFF000000.toInt())
         drawGround(c)
+        fxr.begin(tile, camX, camY, w, h)
+        fxr.drawGround(c)
         drawSorted(c)
         drawProjectiles(c)
         drawCritters(c)
         drawDaylight(c)
+        fxr.drawAir(c)
         drawParticles(c)
         drawNames(c)
         drawTexts(c)
@@ -441,6 +458,7 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         p.color = 0x55000000
         rect.set(sx + t * 0.18f, sy + t * 0.82f, sx + t * 0.82f, sy + t * 0.98f)
         c.drawOval(rect, p)
+        if (mage && g.player.hasteT > 0f) drawGhosts(c, cr, arr, frame)
         val bm = arr[cr.dir][frame]
         c.drawBitmap(bm, sx, sy, if (cr.flash > 0f) flashP else bp)
         if (mage) {
@@ -450,22 +468,28 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
             val hx = if (cr.dir == 3) 64f - ox else ox
             val hy = MageData.ORB[(di * 4 + frame) * 2 + 1]
             val pulse = 0.8f + 0.2f * sin(g.time * 6f)
-            glowAdd(c, sx + hx * s, sy + hy * s, t * (0.3f + 0.45f * night) * pulse, 0xFFFF9A3D.toInt(), 0.9f)
+            var ch = 0f
+            for (v in g.pressT) if (v > ch) ch = v
+            glowAdd(c, sx + hx * s, sy + hy * s, t * (0.3f + 0.45f * night) * pulse * (1f + ch * 3.5f), if (ch > 0f) 0xFFFFE0A0.toInt() else 0xFFFF9A3D.toInt(), 0.9f)
             if (night > 0.12f) addLight(sx + hx * s, sy + hy * s, t * 2.0f, 0)
-            if (g.player.shieldT > 0f) {
-                val a = 0.35f + 0.15f * sin(g.time * 5f)
-                p.color = withAlpha(0xFF6FB6FF.toInt(), a)
-                c.drawCircle(sx + t * 0.5f, sy + t * 0.55f, t * 0.62f, p)
-                p.style = Paint.Style.STROKE
-                p.strokeWidth = max(2f, t * 0.03f)
-                p.color = withAlpha(0xFFBFE0FF.toInt(), 0.8f)
-                c.drawCircle(sx + t * 0.5f, sy + t * 0.55f, t * 0.62f, p)
-                p.style = Paint.Style.FILL
-            }
-            if (g.player.hasteT > 0f && cr.moving) {
-                p.color = withAlpha(0xFF7CFF8A.toInt(), 0.5f)
-                c.drawCircle(sx + t * 0.5f, sy + t * 0.92f, t * 0.07f, p)
-            }
+        }
+    }
+
+    private fun drawGhosts(c: Canvas, cr: Creature, arr: Array<Array<Bitmap>>, frame: Int) {
+        if (cr.moving && g.time - lastGhost > 0.045f) {
+            lastGhost = g.time
+            gi = (gi + 1) % GN
+            gX[gi] = cr.fx
+            gY[gi] = cr.fy
+            gD[gi] = cr.dir
+            gF[gi] = frame
+            gT[gi] = g.time
+        }
+        for (k in 0 until GN) {
+            val age = g.time - gT[k]
+            if (age < 0f || age > 0.3f) continue
+            ghostP.alpha = ((1f - age / 0.3f) * 150f).toInt()
+            c.drawBitmap(arr[gD[k]][gF[k]], Math.round(sxOf(gX[k])).toFloat(), Math.round(syOf(gY[k])).toFloat(), ghostP)
         }
     }
 
@@ -567,6 +591,10 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         p.style = Paint.Style.FILL
         for (pt in g.parts) {
             if (pt.delay > 0f) continue
+            if (pt.kind >= 3) {
+                fxr.particle(c, pt)
+                continue
+            }
             val f = pt.life / pt.maxLife
             val x = sxOf(pt.x)
             val y = syOf(pt.y)
@@ -654,7 +682,14 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         panel(c, x, y, x + t * 4.4f, y + t * 1.5f)
         txt(c, pl.name + "   Nível " + pl.level, x + t * 0.2f, y + t * 0.38f, t * 0.27f, COL_YELLOW, Paint.Align.LEFT)
         bar(c, x + t * 0.2f, y + t * 0.52f, t * 4.0f, t * 0.28f, pl.hp.toFloat() / pl.maxHp, 0xFFD23A3A.toInt(), 0x66FFFFFF, "" + pl.hp + " / " + pl.maxHp)
-        bar(c, x + t * 0.2f, y + t * 0.86f, t * 4.0f, t * 0.28f, pl.mana.toFloat() / pl.maxMana, 0xFF3A6FD2.toInt(), 0x66FFFFFF, "" + pl.mana + " / " + pl.maxMana)
+        if (g.cheat) {
+            val ph = 0.5f + 0.5f * sin(g.time * 2.2f)
+            bar(c, x + t * 0.2f, y + t * 0.86f, t * 4.0f, t * 0.28f, 1f, mixCol(0xFF3A6FD2.toInt(), 0xFFB35CFF.toInt(), ph), 0x66FFFFFF, "")
+            manaShine(c, x + t * 0.2f, y + t * 0.86f, t * 4.0f, t * 0.28f)
+            fxr.infinity(c, x + t * 2.2f, y + t * 1.0f, t * 0.19f, COL_WHITE, 1f, false, max(2f, t * 0.035f))
+        } else {
+            bar(c, x + t * 0.2f, y + t * 0.86f, t * 4.0f, t * 0.28f, pl.mana.toFloat() / pl.maxMana, 0xFF3A6FD2.toInt(), 0x66FFFFFF, "" + pl.mana + " / " + pl.maxMana)
+        }
         val cur = expForLevel(pl.level)
         val nxt = expForLevel(pl.level + 1)
         val ef = if (nxt > cur) (pl.exp - cur).toFloat() / (nxt - cur).toFloat() else 0f
@@ -673,6 +708,18 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
             txt(c, "E", ix, iy + t * 0.09f, t * 0.28f, 0xFF6FB6FF.toInt(), Paint.Align.CENTER)
             txt(c, "" + pl.shieldT.toInt(), ix, iy + t * 0.55f, t * 0.18f, COL_WHITE, Paint.Align.CENTER)
         }
+    }
+
+    private fun manaShine(c: Canvas, x: Float, y: Float, bw: Float, bh: Float) {
+        val k = (g.time * 0.5f) % 1.6f - 0.3f
+        c.save()
+        c.clipRect(x + 2f, y + 2f, x + bw - 2f, y + bh - 2f)
+        p.style = Paint.Style.FILL
+        p.color = withAlpha(0xFFFFFFFF.toInt(), 0.35f)
+        val sxp = x + bw * k
+        c.drawRect(sxp, y, sxp + bw * 0.1f, y + bh, p)
+        c.drawRect(sxp + bw * 0.13f, y, sxp + bw * 0.16f, y + bh, p)
+        c.restore()
     }
 
     private fun drawMiniAndButtons(c: Canvas, mg: Float) {
@@ -732,6 +779,13 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         p.color = 0xFFF2C94C.toInt()
         c.drawRect(bx2 - br * 0.08f, by - br * 0.1f, bx2 + br * 0.08f, by + br * 0.2f, p)
         addHit(Ui.BAG, bx2 - br, by - br, bx2 + br, by + br)
+        // botão do modo mago supremo (mana infinita + todas as magias)
+        val bx3 = bx2 - br * 2f - mg
+        val on = g.cheat
+        if (on) glowAdd(c, bx3, by, br * 1.7f, 0xFFB388FF.toInt(), 0.55f + 0.25f * sin(g.time * 4f))
+        button(c, bx3, by, br, if (on) mixCol(0xFFFFD27A.toInt(), 0xFFB388FF.toInt(), 0.5f + 0.5f * sin(g.time * 3f)) else 0xFF8A6A45.toInt())
+        fxr.infinity(c, bx3, by, br * 0.52f, if (on) 0xFFFFE9A0.toInt() else 0xFFE8D6B0.toInt(), 1f, false, max(2f, br * 0.14f))
+        addHit(Ui.CHEAT, bx3 - br, by - br, bx3 + br, by + br)
     }
 
     private fun drawBattle(c: Canvas, mg: Float) {
@@ -844,13 +898,20 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
     private fun drawSpellButton(c: Canvas, i: Int, cx: Float, cy: Float, r: Float) {
         val s = Spells.list[i]
         val pl = g.player
-        val locked = pl.level < s.level
-        val noMana = !locked && pl.mana < s.mana
-        button(c, cx, cy, r, if (locked) 0xFF444444.toInt() else s.color)
+        val locked = pl.level < s.level && !g.cheat
+        val noMana = !locked && !g.cheat && pl.mana < s.mana
+        val ready = !locked && !noMana && g.cd[i] <= 0f
+        if (ready) glowAdd(c, cx, cy, r * 1.4f, s.color, 0.3f + 0.12f * sin(g.time * 3f + i))
+        val border = if (locked) 0xFF444444.toInt()
+        else if (g.cheat) mixCol(s.color, 0xFFFFE9A0.toInt(), 0.35f + 0.35f * sin(g.time * 3f + i))
+        else s.color
+        button(c, cx, cy, r, border)
         val ic = if (locked) 0xFF666666.toInt() else if (noMana) mixCol(s.color, 0xFF444444.toInt(), 0.6f) else s.color
         spellIcon(c, s.kind, cx, cy - r * 0.08f, r * 0.7f, ic)
         if (locked) {
             txt(c, "Nv " + s.level, cx, cy + r * 0.72f, r * 0.34f, 0xFFAAAAAA.toInt(), Paint.Align.CENTER)
+        } else if (g.cheat) {
+            fxr.infinity(c, cx, cy + r * 0.62f, r * 0.24f, 0xFF9BC8FF.toInt(), 1f, false, max(2f, r * 0.07f))
         } else {
             txt(c, "" + s.mana, cx, cy + r * 0.74f, r * 0.34f, if (noMana) 0xFF7A9BD0.toInt() else 0xFF9BC8FF.toInt(), Paint.Align.CENTER)
         }
@@ -862,6 +923,29 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
             rect.set(cx - r, cy - r, cx + r, cy + r)
             c.drawArc(rect, -90f, 360f * f, true, p)
             txt(c, String.format("%.1f", cdv), cx, cy + r * 0.12f, r * 0.45f, COL_WHITE, Paint.Align.CENTER)
+        }
+        val rt = g.readyT[i]
+        if (rt > 0f && !locked) {
+            val q = 1f - rt / 0.7f
+            p.style = Paint.Style.FILL
+            p.color = withAlpha(0xFFFFFFFF.toInt(), (1f - q) * 0.45f)
+            c.drawCircle(cx, cy, r, p)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = max(2f, r * 0.08f)
+            p.color = withAlpha(s.color, 1f - q)
+            c.drawCircle(cx, cy, r * (1f + 0.5f * q), p)
+            p.style = Paint.Style.FILL
+        }
+        val pr = g.pressT[i]
+        if (pr > 0f) {
+            val q = 1f - pr / 0.4f
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = max(2f, r * 0.1f)
+            p.color = withAlpha(0xFFFFFFFF.toInt(), 1f - q)
+            c.drawCircle(cx, cy, r * (0.85f + 0.9f * q), p)
+            p.color = withAlpha(s.color, (1f - q) * 0.8f)
+            c.drawCircle(cx, cy, r * (0.7f + 1.3f * q), p)
+            p.style = Paint.Style.FILL
         }
     }
 
@@ -1225,15 +1309,21 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         p.style = Paint.Style.FILL
         p.color = 0xBB000000.toInt()
         c.drawRect(0f, 0f, sw, sh, p)
-        val pw = t * 5f
-        val ph = t * 4.6f
+        val pw = t * 6.2f
+        val ph = t * 5.7f
         val l = (sw - pw) / 2f
         val top = (sh - ph) / 2f
         panel(c, l, top, l + pw, top + ph)
         txt(c, "Menu", sw / 2f, top + t * 0.75f, t * 0.5f, COL_YELLOW, Paint.Align.CENTER)
         menuButton(c, Ui.MENU_CONT, "Continuar", sw / 2f, top + t * 1.05f, pw - t * 0.8f, t * 0.8f, 0xFF3C7A3C.toInt())
         menuButton(c, Ui.MENU_SAVE, "Salvar jogo", sw / 2f, top + t * 2.0f, pw - t * 0.8f, t * 0.8f, 0xFF3A5A9A.toInt())
-        menuButton(c, Ui.MENU_EXIT, "Sair para o início", sw / 2f, top + t * 2.95f, pw - t * 0.8f, t * 0.8f, 0xFF8A4A3A.toInt())
+        val on = g.cheat
+        menuButton(
+            c, Ui.MENU_CHEAT, if (on) "Mana infinita: LIGADA" else "Mana infinita: DESLIGADA", sw / 2f, top + t * 2.95f,
+            pw - t * 0.8f, t * 0.8f, if (on) 0xFF7A3FC0.toInt() else 0xFF5A5A66.toInt()
+        )
+        menuButton(c, Ui.MENU_EXIT, "Sair para o início", sw / 2f, top + t * 3.9f, pw - t * 0.8f, t * 0.8f, 0xFF8A4A3A.toInt())
+        txt(c, "Mana infinita também libera todas as magias.", sw / 2f, top + ph - t * 0.5f, t * 0.17f, 0xFFD0B8FF.toInt(), Paint.Align.CENTER)
         txt(c, "O jogo salva sozinho a cada poucos segundos.", sw / 2f, top + ph - t * 0.2f, t * 0.17f, COL_GRAY, Paint.Align.CENTER)
     }
 

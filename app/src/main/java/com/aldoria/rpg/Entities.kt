@@ -100,6 +100,8 @@ class Monster(val type: MonsterType, val spawnX: Int, val spawnY: Int) : Creatur
     var thinkCd = 0f
     var wanderCd = 1f
     var deadT = 0f
+    var burnT = 0f
+    var shockT = 0f
 
     init {
         hp = type.hp
@@ -116,7 +118,10 @@ class FloatText(var x: Float, var y: Float, val text: String, val color: Int, va
     val maxLife = life
 }
 
-/** Partícula: posição e tamanho em "tiles". kind 0 = círculo, 1 = quadrado, 2 = brilho em cruz. */
+/**
+ * Partícula: posição e tamanho em "tiles". kind 0 = círculo, 1 = quadrado, 2 = brilho em cruz,
+ * 3 = fumaça, 4 = brasa (risco), 5 = brilho cintilante, 7 = runa, 8 = rastro de vento, 9 = caco hexagonal.
+ */
 class Particle(
     var x: Float, var y: Float, var vx: Float, var vy: Float,
     var life: Float, val color: Int, val size: Float, val kind: Int
@@ -124,6 +129,13 @@ class Particle(
     val maxLife = life
     var gy = 0f
     var delay = 0f
+    /** Crescimento do tamanho por segundo (fumaça). */
+    var grow = 0f
+    /** Rotação (rad) e velocidade de rotação (rad/s). */
+    var rot = 0f
+    var vr = 0f
+    /** Atrito: fração da velocidade perdida por segundo. */
+    var drag = 0f
 }
 
 class Projectile(val fromX: Float, val fromY: Float, val target: Monster, val dmg: Int, val color: Int, val dur: Float) {

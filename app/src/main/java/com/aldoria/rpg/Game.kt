@@ -2,7 +2,9 @@ package com.aldoria.rpg
 
 import android.content.Context
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -39,6 +41,15 @@ class Game(ctx: Context) {
     val cd = FloatArray(Spells.list.size)
     private var autoCd = 0f
     private var saveT = 0f
+    val pressT = FloatArray(Spells.list.size)
+    val readyT = FloatArray(Spells.list.size)
+    val fx = ArrayList<Fx>()
+    val delayed = ArrayList<Delayed>()
+    /** Modo mago supremo: mana infinita e todas as magias liberadas. */
+    var cheat = false
+    var shakeAmp = 1f
+    private var auraT = 0f
+    private val orbPt = FloatArray(2)
 
     init {
         for (s in world.spawns) {
@@ -83,6 +94,7 @@ class Game(ctx: Context) {
             .putInt("y", p.y)
             .putInt("gold", inv["gold"] ?: 0)
             .putInt("cheese", inv["cheese"] ?: 0)
+            .putBoolean("cheat", cheat)
             .apply()
     }
 
@@ -93,6 +105,7 @@ class Game(ctx: Context) {
         p.exp = prefs.getLong("exp", 0L)
         p.ml = prefs.getInt("ml", 0)
         p.manaSpent = prefs.getLong("ms", 0L)
+        cheat = prefs.getBoolean("cheat", false)
         p.maxHp = hpFor(p.level)
         p.maxMana = manaFor(p.level)
         p.hp = prefs.getInt("hp", p.maxHp).coerceIn(1, p.maxHp)
@@ -157,6 +170,79 @@ class Game(ctx: Context) {
                 0f, -rise, life * (0.7f + rnd.nextFloat() * 0.3f), color, size, kind
             )
             parts.add(pt)
+        }
+    }
+
+    // ------------------------------------------------------------------ efeitos de magia
+
+    private fun newFx(kind: Int, x: Float, y: Float, dur: Float, color: Int): Fx {
+        val f = Fx(kind, x, y, dur)
+        f.color = color
+        f.seed = rnd.nextInt(100000)
+        fx.add(f)
+        while (fx.size > 60) fx.removeAt(0)
+        return f
+    }
+
+    /** Cria uma partícula com todos os parâmetros. */
+    private fun pt(
+        kind: Int, x: Float, y: Float, vx: Float, vy: Float, life: Float, color: Int, size: Float,
+        gy: Float, grow: Float, drag: Float, vr: Float, delay: Float
+    ) {
+        if (parts.size > 900) return
+        val q = Particle(x, y, vx, vy, life, color, size, kind)
+        q.gy = gy
+        q.grow = grow
+        q.drag = drag
+        q.vr = vr
+        q.delay = delay
+        q.rot = rnd.nextFloat() * TAU
+        parts.add(q)
+    }
+
+    /** Posição (em quadrados) da esfera do cajado, de onde saem as magias. */
+    private fun orb(): FloatArray {
+        val p = player
+        val frame = if (p.moving) ((p.walk * 2f).toInt() and 3) else 0
+        val di = if (p.dir == 3) 1 else p.dir
+        val ox = MageData.ORB[(di * 4 + frame) * 2]
+        val hx = if (p.dir == 3) 64f - ox else ox
+        val hy = MageData.ORB[(di * 4 + frame) * 2 + 1]
+        orbPt[0] = p.fx + hx / 64f
+        orbPt[1] = p.fy + hy / 64f
+        return orbPt
+    }
+
+    private fun rf(): Float = rnd.nextFloat()
+
+    fun toggleCheat() {
+        if (dead) return
+        cheat = !cheat
+        prefs.edit().putBoolean("cheat", cheat).apply()
+        val p = player
+        val gold = 0xFFFFD27A.toInt()
+        val violet = 0xFFB388FF.toInt()
+        if (cheat) {
+            p.mana = p.maxMana
+            say("MODO MAGO SUPREMO: mana infinita e todas as magias liberadas!", COL_YELLOW)
+            val f = newFx(FxK.ARCANE, p.fx + 0.5f, p.fy + 0.88f, 2.6f, gold)
+            f.follow = true
+            shake = 0.4f
+            shakeAmp = 1.5f
+            for (i in 0 until 26) {
+                val a = rf() * TAU
+                val r = 0.3f + rf() * 1.0f
+                pt(5, p.fx + 0.5f + cos(a) * r, p.fy + 0.88f + sin(a) * r * 0.5f, 0f, -0.6f - rf() * 1.2f,
+                    1.2f + rf() * 0.8f, if (i % 2 == 0) gold else violet, 0.05f, 0f, 0f, 0f, 0f, rf() * 0.5f)
+            }
+            for (i in 0 until 10) {
+                val a = i * TAU / 10f
+                pt(7, p.fx + 0.5f + cos(a) * 1.0f, p.fy + 0.7f + sin(a) * 0.5f, 0f, -0.5f - rf() * 0.5f,
+                    1.6f, gold, 0.09f, 0f, 0f, 0f, (rf() - 0.5f) * 2f, rf() * 0.4f)
+            }
+        } else {
+            say("Modo mago supremo desligado.", COL_GRAY)
+            ring(p.fx + 0.5f, p.fy + 0.9f, 18, violet, 0.6f, 0.8f, 0.8f, 0.06f, 2)
         }
     }
 
@@ -297,6 +383,8 @@ class Game(ctx: Context) {
         p.shieldT = 0f
         p.place(world.startX, world.startY)
         dead = false
+        fx.clear()
+        delayed.clear()
         for (m in monsters) m.aggro = false
         say("Você renasceu no templo de Aldoria.", COL_YELLOW)
         if (loss > 0L) say("Você perdeu $loss pontos de experiência.", COL_RED)
@@ -309,7 +397,7 @@ class Game(ctx: Context) {
         if (dead || i < 0 || i >= Spells.list.size) return
         val s = Spells.list[i]
         val p = player
-        if (p.level < s.level) {
+        if (!cheat && p.level < s.level) {
             say("Você precisa do nível " + s.level + " para usar " + s.words + ".", COL_RED)
             return
         }
@@ -317,7 +405,7 @@ class Game(ctx: Context) {
             say("Você está exausto.", COL_RED)
             return
         }
-        if (p.mana < s.mana) {
+        if (!cheat && p.mana < s.mana) {
             say("Você não tem mana suficiente.", COL_RED)
             burst(p.fx + 0.5f, p.fy + 0.3f, 6, 0xFF6FB6FF.toInt(), 0.9f, 0.4f, 0.05f, 0f, 0)
             return
@@ -338,78 +426,204 @@ class Game(ctx: Context) {
                 return
             }
         }
-        p.mana -= s.mana
+        if (!cheat) p.mana -= s.mana
         addManaSpent(s.mana)
         cd[i] = s.cd
+        pressT[i] = 0.4f
         addText(p.fx + 0.5f, p.fy - 0.25f, s.words, COL_YELLOW, 0.9f, 1.3f)
 
         val base = p.level * 0.2f + p.ml * 1.4f
+        val feetX = p.fx + 0.5f
+        val feetY = p.fy + 0.88f
         when (s.kind) {
             Spells.HEAL -> {
                 val amt = (base + 18f + rnd.nextInt(12)).toInt()
                 heal(amt)
+                val o = orb()
+                newFx(FxK.FLARE, o[0], o[1], 0.5f, s.color)
+                val f = newFx(FxK.HEAL, feetX, feetY, 1.9f, s.color)
+                f.follow = true
             }
             Spells.FIRE -> {
                 val m = tg ?: return
                 p.dir = dirTo(p.x, p.y, m.x, m.y)
                 val dmg = (base + 8f + rnd.nextInt(8)).toInt()
-                fireFx(m.fx + 0.5f, m.fy + 0.5f)
-                damageMonster(m, dmg, 1)
+                val o = orb()
+                val ox = o[0]
+                val oy = o[1]
+                val travel = 0.17f + 0.065f * cheb(p.x, p.y, m.x, m.y)
+                newFx(FxK.FLARE, ox, oy, 0.5f, s.color)
+                val cf = newFx(FxK.CAST, feetX, feetY, 0.7f, s.color)
+                cf.follow = true
+                cf.scale = 0.55f
+                val fb = newFx(FxK.FIREBALL, ox, oy, travel, s.color)
+                fb.target = m
+                fb.tx = m.fx + 0.5f
+                fb.ty = m.fy + 0.5f
+                for (n in 0 until 10) {
+                    val a = rf() * TAU
+                    pt(5, ox + cos(a) * 0.35f, oy + sin(a) * 0.35f, -cos(a) * 1.6f, -sin(a) * 1.6f,
+                        0.22f, if (n % 2 == 0) 0xFFFFA43D.toInt() else 0xFFFFE066.toInt(), 0.04f, 0f, 0f, 0f, 0f, 0f)
+                }
+                delayed.add(Delayed(travel) { fireImpact(m, dmg) })
             }
             Spells.ENERGY -> {
                 val m = tg ?: return
                 p.dir = dirTo(p.x, p.y, m.x, m.y)
                 val dmg = (base + 6f + rnd.nextInt(9)).toInt()
-                val cx = m.fx + 0.5f
-                val cy = m.fy + 0.5f
-                burst(cx, cy, 18, 0xFFB388FF.toInt(), 3.4f, 0.45f, 0.08f, 0f, 2)
-                burst(cx, cy, 10, 0xFFE9DDFF.toInt(), 1.8f, 0.35f, 0.06f, 0f, 0)
-                ring(cx, cy + 0.3f, 10, 0xFF7FE9FF.toInt(), 0.4f, 0.8f, 0.5f, 0.06f, 2)
-                damageMonster(m, dmg, 2)
+                val o = orb()
+                val ox = o[0]
+                val oy = o[1]
+                newFx(FxK.FLARE, ox, oy, 0.5f, s.color)
+                val cf = newFx(FxK.CAST, feetX, feetY, 0.7f, s.color)
+                cf.follow = true
+                cf.scale = 0.55f
+                val bf = newFx(FxK.BOLT, ox, oy, 0.6f, s.color)
+                bf.target = m
+                bf.tx = m.fx + 0.5f
+                bf.ty = m.fy + 0.5f
+                shake = max(shake, 0.12f)
+                shakeAmp = 0.7f
+                for (n in 0 until 12) {
+                    val a = rf() * TAU
+                    pt(4, ox, oy, cos(a) * 3.2f, sin(a) * 3.2f, 0.25f, if (n % 2 == 0) s.color else 0xFFE9DDFF.toInt(),
+                        0.03f, 0f, 0f, 3f, 0f, 0f)
+                }
+                delayed.add(Delayed(0.07f) { energyImpact(m, dmg) })
             }
-            Spells.WAVE -> castWave(base)
+            Spells.WAVE -> castWave(base, s.color)
             Spells.HASTE -> {
                 p.hasteT = 30f
                 say("Você está mais rápido!", COL_GREEN)
-                ring(p.fx + 0.5f, p.fy + 0.9f, 16, 0xFF7CFF8A.toInt(), 0.5f, 0.9f, 0.7f, 0.06f, 2)
+                val o = orb()
+                newFx(FxK.FLARE, o[0], o[1], 0.5f, s.color)
+                val f = newFx(FxK.HASTE, feetX, feetY, 1.1f, s.color)
+                f.follow = true
+                for (n in 0 until 18) {
+                    val a = n * TAU / 18f
+                    pt(8, feetX + cos(a) * 0.45f, feetY - 0.1f + sin(a) * 0.2f, -sin(a) * 1.3f, -1.8f - rf() * 0.9f,
+                        0.55f, s.color, 0.06f, 0f, 0f, 0f, 0f, rf() * 0.2f)
+                }
+                for (n in 0 until 10) {
+                    val a = rf() * TAU
+                    pt(3, feetX, feetY, cos(a) * 1.0f, sin(a) * 0.4f, 0.7f, 0xFFC8D8A8.toInt(), 0.09f, 0f, 0.28f, 2f, 0f, 0f)
+                }
             }
             Spells.SHIELD -> {
-                p.shieldT = 20f
+                p.shieldT = SHIELD_DUR
                 say("Escudo mágico ativado.", COL_BLUE)
-                ring(p.fx + 0.5f, p.fy + 0.9f, 22, 0xFF6FB6FF.toInt(), 0.6f, 0.5f, 0.9f, 0.07f, 2)
+                val o = orb()
+                newFx(FxK.FLARE, o[0], o[1], 0.5f, s.color)
+                val f = newFx(FxK.SHIELD, feetX, feetY, 1.4f, s.color)
+                f.follow = true
+                shake = max(shake, 0.12f)
+                shakeAmp = 0.6f
+                for (n in 0 until 20) {
+                    val a = rf() * TAU
+                    pt(5, feetX + cos(a) * 0.7f, feetY + sin(a) * 0.35f, 0f, -0.8f - rf() * 0.8f,
+                        1.0f, s.color, 0.04f, 0f, 0f, 0f, 0f, rf() * 0.4f)
+                }
+                for (n in 0 until 8) {
+                    val a = n * TAU / 8f
+                    pt(7, feetX + cos(a) * 0.8f, feetY - 0.2f + sin(a) * 0.4f, 0f, -0.5f - rf() * 0.3f,
+                        1.3f, s.color, 0.07f, 0f, 0f, 0f, (rf() - 0.5f) * 2f, rf() * 0.3f)
+                }
             }
         }
     }
 
-    private fun fireFx(cx: Float, cy: Float) {
-        burst(cx, cy + 0.1f, 26, 0xFFFF8A3D.toInt(), 2.2f, 0.7f, 0.12f, -1.6f, 0)
-        burst(cx, cy + 0.1f, 14, 0xFFFFE066.toInt(), 1.4f, 0.5f, 0.08f, -1.2f, 0)
-        burst(cx, cy, 8, 0xFFFFFFFF.toInt(), 1.8f, 0.3f, 0.05f, 0f, 2)
+    private fun fireImpact(m: Monster, dmg: Int) {
+        val cx = m.fx + 0.5f
+        val cy = m.fy + 0.5f
+        newFx(FxK.BLAST, cx, cy, 1.0f, 0xFFFF8A3D.toInt())
+        newFx(FxK.SCORCH, cx, cy + 0.3f, 3.2f, 0)
+        shake = max(shake, 0.2f)
+        shakeAmp = 1.3f
+        for (n in 0 until 24) {
+            val a = rf() * TAU
+            val sp = 1.2f + rf() * 2.6f
+            pt(4, cx, cy, cos(a) * sp, sin(a) * sp - 1.6f, 0.7f + rf() * 0.7f,
+                if (n % 3 == 0) 0xFFFFE066.toInt() else if (n % 3 == 1) 0xFFFF8A3D.toInt() else 0xFFFF5A2D.toInt(),
+                0.035f, 4.2f, 0f, 0.6f, 0f, 0f)
+        }
+        for (n in 0 until 7) {
+            pt(3, cx + (rf() - 0.5f) * 0.4f, cy, (rf() - 0.5f) * 0.6f, -0.7f - rf() * 0.7f, 1.3f,
+                0xFF3A2A22.toInt(), 0.14f, 0f, 0.4f, 0.6f, 0f, 0.1f + rf() * 0.2f)
+        }
+        for (n in 0 until 10) {
+            val a = rf() * TAU
+            pt(5, cx, cy, cos(a) * 2.4f, sin(a) * 2.4f, 0.45f, 0xFFFFD27A.toInt(), 0.045f, 0f, 0f, 3f, 0f, 0f)
+        }
+        damageMonster(m, dmg, 1)
+        m.burnT = if (m.alive) 2.4f else 0f
     }
 
-    private fun castWave(base: Float) {
+    private fun energyImpact(m: Monster, dmg: Int) {
+        val cx = m.fx + 0.5f
+        val cy = m.fy + 0.5f
+        shake = max(shake, 0.16f)
+        shakeAmp = 1.0f
+        for (n in 0 until 20) {
+            val a = rf() * TAU
+            val sp = 2.0f + rf() * 3.6f
+            pt(4, cx, cy, cos(a) * sp, sin(a) * sp, 0.3f + rf() * 0.3f,
+                if (n % 2 == 0) 0xFFB388FF.toInt() else 0xFFE9DDFF.toInt(), 0.03f, 0f, 0f, 3f, 0f, 0f)
+        }
+        for (n in 0 until 8) {
+            val a = rf() * TAU
+            pt(5, cx, cy, cos(a) * 1.4f, sin(a) * 1.4f - 0.4f, 0.6f, 0xFF7FE9FF.toInt(), 0.04f, 0f, 0f, 2f, 0f, 0f)
+        }
+        damageMonster(m, dmg, 2)
+        m.shockT = if (m.alive) 0.8f else 0f
+    }
+
+    private fun waveHit(m: Monster, dmg: Int) {
+        val cx = m.fx + 0.5f
+        val cy = m.fy + 0.5f
+        for (n in 0 until 8) {
+            val a = rf() * TAU
+            pt(4, cx, cy, cos(a) * 1.8f, sin(a) * 1.8f - 1.2f, 0.6f, 0xFFFFA43D.toInt(), 0.035f, 4f, 0f, 0.5f, 0f, 0f)
+        }
+        damageMonster(m, dmg, 1)
+        m.burnT = if (m.alive) 2.6f else 0f
+    }
+
+    private fun castWave(base: Float, col: Int) {
         val p = player
         val fxv = DX[p.dir]
         val fyv = DY[p.dir]
         val sxv = -fyv
         val syv = fxv
+        val o = orb()
+        val ox = o[0]
+        val oy = o[1]
+        val wf = newFx(FxK.WAVE, p.x + 0.5f, p.y + 0.5f, 3.0f, col)
+        wf.dir = p.dir
+        newFx(FxK.FLARE, ox, oy, 0.55f, col)
+        val cf = newFx(FxK.CAST, p.fx + 0.5f, p.fy + 0.88f, 0.8f, col)
+        cf.follow = true
+        cf.scale = 0.8f
+        shake = 0.38f
+        shakeAmp = 1.9f
+        val a0 = atan2(fyv.toFloat(), fxv.toFloat())
+        for (n in 0 until 34) {
+            val a = a0 + (rf() - 0.5f) * 0.9f
+            val sp = 4.5f + rf() * 3.5f
+            pt(if (n % 3 == 0) 5 else 4, ox, oy, cos(a) * sp, sin(a) * sp, 0.35f + rf() * 0.25f,
+                if (n % 2 == 0) 0xFFFFA43D.toInt() else 0xFFFF5A2D.toInt(), 0.05f, 0f, 0f, 2.5f, 0f, n * 0.006f)
+        }
         for (d in 1..4) {
             val half = d / 2
             for (k in -half..half) {
                 val tx = p.x + fxv * d + sxv * k
                 val ty = p.y + fyv * d + syv * k
-                for (n in 0 until 5) {
-                    val pt = Particle(
-                        tx + 0.5f + (rnd.nextFloat() - 0.5f) * 0.6f,
-                        ty + 0.6f + (rnd.nextFloat() - 0.5f) * 0.4f,
-                        (rnd.nextFloat() - 0.5f) * 0.6f, -0.6f - rnd.nextFloat() * 1.4f,
-                        0.45f + rnd.nextFloat() * 0.3f,
-                        if (n % 2 == 0) 0xFFFF6A2D.toInt() else 0xFFFFC04D.toInt(),
-                        0.12f + rnd.nextFloat() * 0.08f, 0
-                    )
-                    pt.delay = d * 0.07f
-                    parts.add(pt)
+                for (n in 0 until 3) {
+                    pt(4, tx + 0.5f + (rf() - 0.5f) * 0.6f, ty + 0.65f + (rf() - 0.5f) * 0.3f,
+                        (rf() - 0.5f) * 0.8f, -1.2f - rf() * 1.8f, 0.6f + rf() * 0.5f,
+                        if (n % 2 == 0) 0xFFFFA43D.toInt() else 0xFFFFE066.toInt(), 0.04f, 3.5f, 0f, 0.3f, 0f, d * 0.07f)
                 }
+                pt(3, tx + 0.5f, ty + 0.5f, (rf() - 0.5f) * 0.4f, -0.5f - rf() * 0.5f, 1.3f,
+                    0xFF2E2420.toInt(), 0.16f, 0f, 0.3f, 0.8f, 0f, d * 0.07f + 0.35f)
             }
         }
         for (m in monsters) {
@@ -420,8 +634,21 @@ class Game(ctx: Context) {
             val sd = rx * sxv + ry * syv
             if (fd in 1..4 && abs(sd) <= fd / 2) {
                 val dmg = (base + 10f + rnd.nextInt(10)).toInt()
-                damageMonster(m, dmg, 1)
+                delayed.add(Delayed(fd * 0.07f + 0.06f) { waveHit(m, dmg) })
             }
+        }
+    }
+
+    private fun shatterShield() {
+        val p = player
+        val f = newFx(FxK.BREAK, p.fx + 0.5f, p.fy + 0.88f, 0.9f, 0xFF8CC8FF.toInt())
+        f.follow = true
+        val cx = p.fx + 0.5f
+        val cy = p.fy + 0.56f
+        for (n in 0 until 16) {
+            val a = rf() * TAU
+            pt(9, cx + cos(a) * 0.55f, cy + sin(a) * 0.7f, cos(a) * (1.2f + rf() * 1.2f), sin(a) * (1.0f + rf()) - 0.8f,
+                0.9f + rf() * 0.4f, 0xFF6FB6FF.toInt(), 0.06f + rf() * 0.06f, 4f, 0f, 0.4f, (rf() - 0.5f) * 10f, 0f)
         }
     }
 
@@ -507,7 +734,7 @@ class Game(ctx: Context) {
         }
     }
 
-    fun damagePlayer(dmg: Int) {
+    fun damagePlayer(dmg: Int, ang: Float = 1.5708f) {
         if (dead) return
         val p = player
         var d = dmg
@@ -515,7 +742,17 @@ class Game(ctx: Context) {
             val ab = min(p.mana, d)
             p.mana -= ab
             d -= ab
-            if (ab > 0) addText(p.fx + 0.5f, p.fy - 0.1f, ab.toString(), COL_BLUE, 1f, 1f)
+            if (ab > 0) {
+                addText(p.fx + 0.5f, p.fy - 0.1f, ab.toString(), COL_BLUE, 1f, 1f)
+                val rp = newFx(FxK.RIPPLE, 0f, 0f, 0.8f, 0xFF8CC8FF.toInt())
+                rp.ang = ang
+                val hx = p.fx + 0.5f + cos(ang) * 0.62f
+                val hy = p.fy + 0.56f + sin(ang) * 0.74f
+                for (n in 0 until 7) {
+                    val a = ang + (rf() - 0.5f) * 2.4f
+                    pt(5, hx, hy, cos(a) * 1.6f, sin(a) * 1.6f, 0.4f, 0xFF9CD0FF.toInt(), 0.035f, 0f, 0f, 2f, 0f, 0f)
+                }
+            }
         }
         if (d > 0) {
             p.hp -= d
@@ -524,6 +761,7 @@ class Game(ctx: Context) {
         }
         p.flash = 0.2f
         shake = 0.15f
+        shakeAmp = 1f
         if (p.hp <= 0) {
             p.hp = 0
             die()
@@ -546,11 +784,31 @@ class Game(ctx: Context) {
         if (ui == 2) return
         val dt = if (dt0 > 0.05f) 0.05f else dt0
         time += dt
-        for (i in cd.indices) if (cd[i] > 0f) cd[i] -= dt
+        for (i in cd.indices) {
+            if (cd[i] > 0f) {
+                cd[i] -= dt
+                if (cd[i] <= 0f) readyT[i] = 0.7f
+            }
+            if (pressT[i] > 0f) pressT[i] -= dt
+            if (readyT[i] > 0f) readyT[i] -= dt
+        }
         if (shake > 0f) shake -= dt
+        var di = delayed.size - 1
+        while (di >= 0) {
+            if (di < delayed.size) {
+                val dl = delayed[di]
+                dl.t -= dt
+                if (dl.t <= 0f) {
+                    delayed.removeAt(di)
+                    dl.act()
+                }
+            }
+            di--
+        }
         if (!dead) updatePlayer(dt)
         updateMonsters(dt)
         updateShots(dt)
+        updateFx(dt)
         updateEffects(dt)
         saveT += dt
         if (saveT > 15f) {
@@ -566,7 +824,25 @@ class Game(ctx: Context) {
         if (p.hasteT > 0f) p.hasteT -= dt
         if (p.shieldT > 0f) {
             p.shieldT -= dt
-            if (p.shieldT <= 0f) say("O escudo mágico acabou.", COL_GRAY)
+            if (p.shieldT <= 0f) {
+                say("O escudo mágico acabou.", COL_GRAY)
+                shatterShield()
+            }
+        }
+        if (cheat) {
+            p.mana = p.maxMana
+            if (rf() < dt * 7f) {
+                pt(5, p.fx + 0.5f + (rf() - 0.5f) * 0.6f, p.fy + 0.9f - rf() * 0.6f, 0f, -0.5f - rf() * 0.5f, 1.0f,
+                    if (rf() < 0.5f) 0xFFFFD27A.toInt() else 0xFFB388FF.toInt(), 0.04f, 0f, 0f, 0f, 0f, 0f)
+            }
+        }
+        if (p.hasteT > 0f && p.moving) {
+            auraT -= dt
+            if (auraT <= 0f) {
+                auraT = 0.05f
+                pt(8, p.fx + 0.5f + (rf() - 0.5f) * 0.4f, p.fy + 0.4f + rf() * 0.5f, -DX[p.dir] * 2.2f, -DY[p.dir] * 2.2f,
+                    0.32f, 0xFF9CFFA8.toInt(), 0.07f, 0f, 0f, 0f, 0f, 0f)
+            }
         }
         val inPz = world.isPz(p.x, p.y)
         p.regenHpT += dt
@@ -685,7 +961,7 @@ class Game(ctx: Context) {
                     if (m.attackCd <= 0f) {
                         m.attackCd = m.type.atkInterval
                         val d = m.type.dmgMin + rnd.nextInt(m.type.dmgMax - m.type.dmgMin + 1)
-                        damagePlayer(d)
+                        damagePlayer(d, atan2((m.y - p.y).toFloat(), (m.x - p.x).toFloat()))
                     }
                 } else if (m.thinkCd <= 0f) {
                     m.thinkCd = 0.3f
@@ -728,6 +1004,75 @@ class Game(ctx: Context) {
         }
     }
 
+    private fun updateFx(dt: Float) {
+        for (i in fx.size - 1 downTo 0) {
+            val f = fx[i]
+            f.t += dt
+            val tm = f.target
+            if (tm != null) {
+                f.tx = tm.fx + 0.5f
+                f.ty = tm.fy + 0.5f
+            }
+            if (f.kind == FxK.FIREBALL) {
+                f.emit -= dt
+                var guard = 0
+                while (f.emit <= 0f && guard < 4) {
+                    f.emit += 0.018f
+                    guard++
+                    val u = f.fbU()
+                    val wx = f.fbX(u)
+                    val wy = f.fbY(u)
+                    pt(4, wx, wy, -(f.tx - f.x) * 0.2f + (rf() - 0.5f) * 1.2f, (rf() - 0.5f) * 1.2f - 0.3f,
+                        0.35f + rf() * 0.3f, if (rf() < 0.5f) 0xFFFFA43D.toInt() else 0xFFFF6A1E.toInt(),
+                        0.035f, 1.5f, 0f, 1.5f, 0f, 0f)
+                    if (rf() < 0.35f) {
+                        pt(3, wx, wy, (rf() - 0.5f) * 0.4f, -0.3f - rf() * 0.3f, 0.7f, 0xFF3A2A22.toInt(),
+                            0.09f, 0f, 0.25f, 1f, 0f, 0f)
+                    }
+                }
+            } else if (f.kind == FxK.HEAL && f.t < f.dur - 0.5f) {
+                f.emit -= dt
+                if (f.emit <= 0f) {
+                    f.emit = 0.06f
+                    val a = rf() * TAU
+                    val r = 0.3f + rf() * 0.5f
+                    pt(5, player.fx + 0.5f + cos(a) * r, player.fy + 0.88f + sin(a) * r * 0.5f, (rf() - 0.5f) * 0.2f,
+                        -0.7f - rf() * 0.7f, 1.0f, f.color, 0.045f, 0f, 0f, 0f, 0f, 0f)
+                }
+            } else if (f.kind == FxK.ARCANE && f.t < f.dur - 0.8f) {
+                f.emit -= dt
+                if (f.emit <= 0f) {
+                    f.emit = 0.04f
+                    val a = rf() * TAU
+                    val r = 0.4f + rf() * 1.1f
+                    pt(5, player.fx + 0.5f + cos(a) * r, player.fy + 0.88f + sin(a) * r * 0.5f, 0f,
+                        -0.9f - rf() * 1.0f, 1.2f, if (rf() < 0.5f) 0xFFFFD27A.toInt() else 0xFFB388FF.toInt(),
+                        0.045f, 0f, 0f, 0f, 0f, 0f)
+                }
+            }
+            if (f.t >= f.dur) fx.removeAt(i)
+        }
+        for (m in monsters) {
+            if (!m.alive) {
+                m.burnT = 0f
+                m.shockT = 0f
+                continue
+            }
+            if (m.burnT > 0f) {
+                m.burnT -= dt
+                if (rf() < dt * 16f) {
+                    pt(4, m.fx + 0.5f + (rf() - 0.5f) * 0.3f, m.fy + 0.7f, (rf() - 0.5f) * 0.5f, -0.9f - rf() * 0.8f,
+                        0.6f, 0xFFFFA43D.toInt(), 0.03f, 0f, 0f, 0.5f, 0f, 0f)
+                }
+                if (rf() < dt * 4f) {
+                    pt(3, m.fx + 0.5f, m.fy + 0.4f, (rf() - 0.5f) * 0.3f, -0.6f, 1.0f, 0xFF2E2420.toInt(),
+                        0.08f, 0f, 0.25f, 0.5f, 0f, 0f)
+                }
+            }
+            if (m.shockT > 0f) m.shockT -= dt
+        }
+    }
+
     private fun updateEffects(dt: Float) {
         for (i in parts.size - 1 downTo 0) {
             val pt = parts[i]
@@ -735,6 +1080,13 @@ class Game(ctx: Context) {
                 pt.delay -= dt
                 continue
             }
+            if (pt.drag > 0f) {
+                val k = 1f - pt.drag * dt
+                val kk = if (k < 0f) 0f else k
+                pt.vx *= kk
+                pt.vy *= kk
+            }
+            pt.rot += pt.vr * dt
             pt.x += pt.vx * dt
             pt.y += pt.vy * dt
             pt.vy += pt.gy * dt

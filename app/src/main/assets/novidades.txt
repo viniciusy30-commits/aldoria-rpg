@@ -1,3 +1,13 @@
+#id 2026-10-09-d
+#titulo Magias com animações insanas!
+- Bola de fogo viaja até o alvo e explode com onda de choque, brasas, fumaça e chão chamuscado
+- Raio elétrico com ramificações, faíscas e arcos no chão
+- Onda de Fogo com chamas em cada quadrado, frente de calor e fogo que queima os monstros
+- Cura com círculo rúnico, coluna de luz e hélice de brilhos
+- Velocidade deixa rastro fantasma e ventos em espiral
+- Escudo vira um domo hexagonal com ondas de impacto e estilhaça ao acabar
+- Novo botão de mana infinita (∞) no HUD e no menu: libera todas as magias
+
 #id 2026-10-09-c
 #titulo Visual estilo Hytale!
 - Texturas novas, suaves e detalhadas (32x32) em todos os blocos

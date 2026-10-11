@@ -193,6 +193,11 @@ class GameView(ctx: Context, private val game: Game, private val listener: Liste
             Ui.MENU -> game.ui = 2
             Ui.BAG -> game.ui = if (game.ui == 1) 0 else 1
             Ui.TARGET -> game.toggleNearestTarget()
+            Ui.CHEAT -> game.toggleCheat()
+            Ui.MENU_CHEAT -> {
+                game.toggleCheat()
+                game.ui = 0
+            }
             Ui.MENU_CONT -> game.ui = 0
             Ui.MENU_SAVE -> {
                 game.save()

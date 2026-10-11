@@ -68,6 +68,11 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
     private var ratDeadB: Bitmap? = null
     private var miniB: Bitmap? = null
     private val lights = FloatArray(96 * 4)
+    private val roofA = FloatArray(16) { 1f }
+    private val doorO = FloatArray(16)
+    private var roofB: Array<Bitmap?> = arrayOfNulls(16)
+    private val tileCache = HashMap<Int, Bitmap>()
+    private var lastT = 0f
     private var nLights = 0
     private var night = 0f
     private var dusk = 0f
@@ -111,6 +116,8 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
             groundB = Art.ground(tile)
             edgeB = Art.edges(tile)
             objB = Art.objects(tile)
+            tileCache.clear()
+            roofB = arrayOfNulls(16)
             decoB = Art.decals(tile)
             mageB = Art.mage(tile)
             ratB = Art.rat(tile)
@@ -220,7 +227,7 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
 
     private fun rowOf(fy: Float): Int = Math.ceil((fy - 0.001f).toDouble()).toInt()
 
-    private fun isWallish(o: Int): Boolean = o == Ob.WALL || o == Ob.DOOR
+    private fun isWallish(o: Int): Boolean = o == Ob.WALL || o == Ob.DOOR || o == Ob.FAC
     private fun isFenceish(o: Int): Boolean = o == Ob.FENCE || o == Ob.LAMP
 
     private fun addLight(x: Float, y: Float, r: Float, kind: Int) {
@@ -268,7 +275,9 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         drawGround(c)
         fxr.begin(tile, camX, camY, w, h)
         fxr.drawGround(c)
+        updateHouses()
         drawSorted(c)
+        drawRoofs(c)
         drawProjectiles(c)
         drawCritters(c)
         drawDaylight(c)
@@ -392,6 +401,112 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         }
     }
 
+    /** Luz de dentro da casa só conta quando o telhado está aberto (você está lá dentro). */
+    private fun inLit(i: Int): Boolean {
+        val hd = g.world.hid[i]
+        return hd < 0 || roofA[hd] < 0.5f
+    }
+
+    /** Telhado some quando você entra; a porta dupla abre quando você chega perto. */
+    private fun updateHouses() {
+        val dt = (g.time - lastT).coerceIn(0f, 0.1f)
+        lastT = g.time
+        val pl = g.player
+        val wd = g.world
+        for (k in wd.houses.indices) {
+            if (k >= 16) break
+            val hs = wd.houses[k]
+            var inside = pl.x >= hs.x0 && pl.x < hs.x0 + hs.hw && pl.y >= hs.y0 && pl.y <= hs.fu
+            if (!inside && pl.y == hs.fl && pl.x >= hs.doorX && pl.x <= hs.doorX + 1) inside = true
+            val ta = if (inside) 0f else 1f
+            val sp = 5f * dt
+            roofA[k] = if (roofA[k] < ta) min(ta, roofA[k] + sp) else max(ta, roofA[k] - sp)
+            val dx = pl.fx + 0.5f - (hs.doorX + 1f)
+            val dy = pl.fy + 0.5f - (hs.fl + 0.5f)
+            val tod = if (dx * dx + dy * dy < 2.7f * 2.7f) 1f else 0f
+            val ds = 4f * dt
+            doorO[k] = if (doorO[k] < tod) min(tod, doorO[k] + ds) else max(tod, doorO[k] - ds)
+        }
+    }
+
+    private fun drawFacade(c: Canvas, o: Int, tx: Int, i: Int, sx0: Float, sy0: Float) {
+        val wd = g.world
+        val v = wd.ovar[i]
+        val hd = wd.hid[i]
+        val s = tile / 32
+        if (o == Ob.FAC) {
+            val kind = v and 3
+            val edge = (v shr 2) and 3
+            val row = (v shr 4) and 1
+            val style = (v shr 5) and 3
+            val fr = if (kind == 2) ((g.time * 6f).toInt() + tx) and 1 else 0
+            val key = 1000000 + v * 4 + fr
+            var bm = tileCache[key]
+            if (bm == null) {
+                bm = ArtBuild.facade(style, row, kind, edge, fr).toBitmap(s)
+                tileCache[key] = bm
+            }
+            if (kind == 1) addLight(sx0 + 16f * s, sy0 + 16f * s, tile * 1.2f, 2)
+            if (kind == 2) addLight(sx0 + 16f * s, sy0 + 12f * s, tile * 1.8f, 0)
+            c.drawBitmap(bm!!, sx0, sy0, bp)
+        } else {
+            val part = v and 1
+            val row = (v shr 1) and 1
+            val style = (v shr 5) and 3
+            val frame = if (hd >= 0) (doorO[hd] * 4f + 0.5f).toInt().coerceIn(0, 4) else 0
+            val key = 2000000 + v * 8 + frame
+            var bm = tileCache[key]
+            if (bm == null) {
+                val big = ArtBuild.doorBig(style, frame)
+                for (pr in 0..1) for (rw in 0..1) {
+                    val vv = pr or (rw shl 1) or (style shl 5)
+                    tileCache[2000000 + vv * 8 + frame] = ArtBuild.crop(big, pr * 32, rw * 32).toBitmap(s)
+                }
+                bm = tileCache[key]
+            }
+            if (bm == null) return
+            if (row == 1 && frame > 0) addLight(sx0 + (if (part == 0) 32f else 0f) * s, sy0 + 8f * s, tile * (0.9f + 0.25f * frame), 0)
+            c.drawBitmap(bm, sx0, sy0, bp)
+        }
+    }
+
+    private fun drawRoofs(c: Canvas) {
+        val wd = g.world
+        val t = tile
+        val s = t / 32f
+        for (k in wd.houses.indices) {
+            if (k >= 16) break
+            val a = roofA[k]
+            if (a <= 0.01f) continue
+            val hs = wd.houses[k]
+            var bm = roofB[k]
+            if (bm == null) {
+                bm = ArtBuild.roof(hs.style, hs.hw, hs.hh).toBitmap(t / 32)
+                roofB[k] = bm
+            }
+            val left = Math.round((hs.x0 - camX) * t + w / 2f - 11f * s).toFloat()
+            val top = Math.round((hs.y0 - camY) * t + h / 2f - 30f * s).toFloat()
+            if (left > w || left + bm.width < 0f || top > h || top + bm.height < 0f) continue
+            bp.alpha = (a * 255f).toInt().coerceIn(0, 255)
+            c.drawBitmap(bm, left, top, bp)
+            bp.alpha = 255
+            if (a > 0.6f) {
+                // fumaça da chaminé
+                val cx = left + (ArtBuild.chimneyX(hs.hw) + 7.5f) * s
+                val cy = top + (ArtBuild.ridgeY(hs.hh) - 40f) * s
+                p.style = Paint.Style.FILL
+                for (j in 0 until 4) {
+                    val ph = (g.time * 0.3f + j * 0.25f + k * 0.17f) % 1f
+                    val px = cx + sin(ph * 5f + j * 1.7f) * 5f * s + ph * 14f * s
+                    val py = cy - ph * 52f * s
+                    val rr = (3f + ph * 8f) * s
+                    p.color = withAlpha(0xFFD8D8E2.toInt(), (1f - ph) * 0.45f * a)
+                    c.drawCircle(px, py, rr, p)
+                }
+            }
+        }
+    }
+
     private fun drawObject(c: Canvas, ob: Array<Array<Bitmap?>>, o: Int, tx: Int, ty: Int, i: Int) {
         val wd = g.world
         val t = tile
@@ -399,6 +514,10 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         var v = wd.ovar[i]
         val sx0 = Math.round((tx - camX) * t + w / 2f).toFloat()
         val sy0 = Math.round((ty - camY) * t + h / 2f).toFloat()
+        if (o == Ob.FAC || o == Ob.DOOR) {
+            drawFacade(c, o, tx, i, sx0, sy0)
+            return
+        }
         val hasN = isWallish(wd.objAt(tx, ty - 1))
         val hasS = isWallish(wd.objAt(tx, ty + 1))
         if (o == Ob.WALL) {
@@ -406,15 +525,13 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
             val kind = wd.ovar[i]
             if (kind == 1) {
                 v = 4 + combo
-                addLight(sx0 + 16f * s, sy0 + (if (hasN) 8f else 19f) * s, t * 1.1f, 2)
+                if (inLit(i)) addLight(sx0 + 16f * s, sy0 + (if (hasN) 8f else 19f) * s, t * 1.1f, 2)
             } else if (kind == 2) {
                 v = 8 + combo + (if (((g.time * 6f).toInt() + tx) % 2 == 1) 4 else 0)
-                addLight(sx0 + 16f * s, sy0 + (if (hasN) 3f else 14f) * s, t * 2.0f, 0)
+                if (inLit(i)) addLight(sx0 + 16f * s, sy0 + (if (hasN) 3f else 14f) * s, t * 2.0f, 0)
             } else {
                 v = combo
             }
-        } else if (o == Ob.DOOR) {
-            v = if (hasN) 1 else 0
         } else if (o == Ob.FOUNTAIN) {
             v = (g.time * 5f).toInt() and 3
         } else if (o == Ob.FIRE) {
@@ -434,8 +551,8 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         if (bm == null) return
         val sy = sy0 - (bm.height - t)
         if (o == Ob.LAMP) addLight(sx0 + 16f * s, sy + 11f * s, t * 2.6f, 1)
-        if (o == Ob.FIRE) addLight(sx0 + 16f * s, sy + 22f * s, t * 2.4f, 0)
-        if (o == Ob.CAULDRON) addLight(sx0 + 16f * s, sy + 15f * s, t * 1.6f, 3)
+        if (o == Ob.FIRE && inLit(i)) addLight(sx0 + 16f * s, sy + 22f * s, t * 2.4f, 0)
+        if (o == Ob.CAULDRON && inLit(i)) addLight(sx0 + 16f * s, sy + 15f * s, t * 1.6f, 3)
         if (o == Ob.OAK || o == Ob.PINE || o == Ob.BUSH || o == Ob.BUSHF) {
             val k = sin(g.time * 1.3f + tx * 1.7f + ty * 0.9f) * 0.012f
             c.save()

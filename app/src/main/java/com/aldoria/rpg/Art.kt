@@ -67,8 +67,6 @@ object Art {
             out[Ob.WALL][8 + combo] = ArtBuild.wall(2, hasN, hasS, 0).toBitmap(s)
             out[Ob.WALL][12 + combo] = ArtBuild.wall(2, hasN, hasS, 1).toBitmap(s)
         }
-        out[Ob.DOOR][0] = ArtBuild.door(false).toBitmap(s)
-        out[Ob.DOOR][1] = ArtBuild.door(true).toBitmap(s)
         for (f in 0 until 4) out[Ob.FOUNTAIN][f] = ArtBuild.fountain(f).toBitmap(s)
         out[Ob.STATUE][0] = ArtBuild.statue().toBitmap(s)
         out[Ob.LAMP][0] = ArtBuild.lamp().toBitmap(s)

@@ -78,7 +78,7 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
     private var dusk = 0f
     private val glowP = Paint(Paint.ANTI_ALIAS_FLAG)
     private val addMode = PorterDuffXfermode(PorterDuff.Mode.ADD)
-    private val PRIO = intArrayOf(0, 1, 2, 3, 4, 5, -1, -1, -1)
+    private val PRIO = intArrayOf(0, 1, 2, 3, 4, 5, -1, -1, -1, -1)
     private var vig: RadialGradient? = null
 
     private val p = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -324,7 +324,7 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
                 val sx = Math.round((tx - camX) * t + halfW).toFloat()
                 val sy = Math.round((ty - camY) * t + halfH).toFloat()
                 val gid = wd.ground[i]
-                var v = wd.vari[i] and 7
+                var v = if (gid == Gd.RUG) wd.vari[i] else (wd.vari[i] and 7)
                 if (gid == Gd.WATER || gid == Gd.SHALLOW) v = (frame + tx + ty * 2) and 3
                 c.drawBitmap(gb[gid][v], sx, sy, bp)
                 val pr = PRIO[gid]
@@ -429,45 +429,76 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         }
     }
 
-    private fun drawFacade(c: Canvas, o: Int, tx: Int, i: Int, sx0: Float, sy0: Float) {
+    private fun drawFacade(c: Canvas, o: Int, tx: Int, ty: Int, i: Int, sx0: Float, sy0: Float) {
         val wd = g.world
         val v = wd.ovar[i]
         val hd = wd.hid[i]
+        if (hd < 0) return
+        val hs = wd.houses[hd]
         val s = tile / 32
+        // 0 = telhado fechado (visto de fora); 1 = você está dentro
+        val open = 1f - roofA[hd]
+        if (o == Ob.WALL) {
+            if (ty == hs.y0) {
+                if (open <= 0.02f) return
+                val kind = v and 3
+                val edge = if (tx == hs.x0) 1 else if (tx == hs.x0 + hs.hw - 1) 2 else 0
+                val fr = if (kind == 2) ((g.time * 5f).toInt() + tx) and 1 else 0
+                val key = 3000000 + ((hs.style * 4 + kind) * 3 + edge) * 2 + fr
+                var bm = tileCache[key]
+                if (bm == null) {
+                    bm = ArtHouse.backWall(hs.style, kind, edge, fr).toBitmap(s)
+                    tileCache[key] = bm
+                }
+                if (kind == 2 && inLit(i)) addLight(sx0 + 16f * s, sy0 - 10f * s, tile * 2.0f, 0)
+                bp.alpha = (open * 255f).toInt().coerceIn(0, 255)
+                c.drawBitmap(bm!!, sx0, sy0 - (bm.height - tile), bp)
+                bp.alpha = 255
+            } else {
+                val left = tx == hs.x0
+                val key = 3100000 + (if (left) 0 else 1)
+                var bm = tileCache[key]
+                if (bm == null) {
+                    bm = ArtHouse.sideWall(left).toBitmap(s)
+                    tileCache[key] = bm
+                }
+                c.drawBitmap(bm!!, sx0, sy0, bp)
+            }
+            return
+        }
         if (o == Ob.FAC) {
             val kind = v and 3
             val edge = (v shr 2) and 3
-            val row = (v shr 4) and 1
-            val style = (v shr 5) and 3
+            val style = (v shr 4) and 7
             val fr = if (kind == 2) ((g.time * 6f).toInt() + tx) and 1 else 0
-            val key = 1000000 + v * 4 + fr
+            val key = 1000000 + v * 2 + fr
             var bm = tileCache[key]
             if (bm == null) {
-                bm = ArtBuild.facade(style, row, kind, edge, fr).toBitmap(s)
+                bm = ArtHouse.facade(style, kind, edge, fr).toBitmap(s)
                 tileCache[key] = bm
             }
-            if (kind == 1) addLight(sx0 + 16f * s, sy0 + 16f * s, tile * 1.2f, 2)
-            if (kind == 2) addLight(sx0 + 16f * s, sy0 + 12f * s, tile * 1.8f, 0)
-            c.drawBitmap(bm!!, sx0, sy0, bp)
-        } else {
-            val part = v and 1
-            val row = (v shr 1) and 1
-            val style = (v shr 5) and 3
-            val frame = if (hd >= 0) (doorO[hd] * 4f + 0.5f).toInt().coerceIn(0, 4) else 0
-            val key = 2000000 + v * 8 + frame
-            var bm = tileCache[key]
-            if (bm == null) {
-                val big = ArtBuild.doorBig(style, frame)
-                for (pr in 0..1) for (rw in 0..1) {
-                    val vv = pr or (rw shl 1) or (style shl 5)
-                    tileCache[2000000 + vv * 8 + frame] = ArtBuild.crop(big, pr * 32, rw * 32).toBitmap(s)
-                }
-                bm = tileCache[key]
-            }
-            if (bm == null) return
-            if (row == 1 && frame > 0) addLight(sx0 + (if (part == 0) 32f else 0f) * s, sy0 + 8f * s, tile * (0.9f + 0.25f * frame), 0)
-            c.drawBitmap(bm, sx0, sy0, bp)
+            if (kind == 1) addLight(sx0 + 16f * s, sy0 - 5f * s, tile * 1.4f, 2)
+            if (kind == 2) addLight(sx0 + 22f * s, sy0 - 2f * s, tile * 1.9f, 0)
+            // por dentro, a frente da casa fica quase transparente para você enxergar o saguão
+            bp.alpha = ((1f - 0.8f * open) * 255f).toInt().coerceIn(0, 255)
+            c.drawBitmap(bm!!, sx0, sy0 - (bm.height - tile), bp)
+            bp.alpha = 255
+            return
         }
+        // porta dupla
+        val part = v and 1
+        val style = (v shr 1) and 7
+        val frame = (doorO[hd] * 4f + 0.5f).toInt().coerceIn(0, 4)
+        val key = 2000000 + (style * 2 + part) * 8 + frame
+        var bm = tileCache[key]
+        if (bm == null) {
+            val big = ArtHouse.doorBig(style, frame)
+            for (pr in 0..1) tileCache[2000000 + (style * 2 + pr) * 8 + frame] = ArtHouse.crop(big, pr * 32, 0, 32, 64).toBitmap(s)
+            bm = tileCache[key]
+        }
+        if (bm == null) return
+        if (frame > 0) addLight(sx0 + (if (part == 0) 32f else 0f) * s, sy0 - 4f * s, tile * (0.9f + 0.25f * frame), 0)
+        c.drawBitmap(bm, sx0, sy0 - (bm.height - tile), bp)
     }
 
     private fun drawRoofs(c: Canvas) {
@@ -481,7 +512,7 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
             val hs = wd.houses[k]
             var bm = roofB[k]
             if (bm == null) {
-                bm = ArtBuild.roof(hs.style, hs.hw, hs.hh).toBitmap(t / 32)
+                bm = ArtHouse.roof(hs.style, hs.hw, hs.hh, hs.vr).toBitmap(t / 32)
                 roofB[k] = bm
             }
             val left = Math.round((hs.x0 - camX) * t + w / 2f - 11f * s).toFloat()
@@ -491,17 +522,19 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
             c.drawBitmap(bm, left, top, bp)
             bp.alpha = 255
             if (a > 0.6f) {
-                // fumaça da chaminé
-                val cx = left + (ArtBuild.chimneyX(hs.hw) + 7.5f) * s
-                val cy = top + (ArtBuild.ridgeY(hs.hh) - 40f) * s
+                // fumaça das chaminés
+                val cy = top + (ArtHouse.ridgeY(hs.hh) - 40f) * s
                 p.style = Paint.Style.FILL
-                for (j in 0 until 4) {
-                    val ph = (g.time * 0.3f + j * 0.25f + k * 0.17f) % 1f
-                    val px = cx + sin(ph * 5f + j * 1.7f) * 5f * s + ph * 14f * s
-                    val py = cy - ph * 52f * s
-                    val rr = (3f + ph * 8f) * s
-                    p.color = withAlpha(0xFFD8D8E2.toInt(), (1f - ph) * 0.45f * a)
-                    c.drawCircle(px, py, rr, p)
+                for ((n, chx) in ArtHouse.chimneys(hs.hw, hs.vr).withIndex()) {
+                    val cx = left + (chx + 7.5f) * s
+                    for (j in 0 until 4) {
+                        val ph = (g.time * 0.3f + j * 0.25f + k * 0.17f + n * 0.4f) % 1f
+                        val px = cx + sin(ph * 5f + j * 1.7f) * 5f * s + ph * 14f * s
+                        val py = cy - ph * 52f * s
+                        val rr = (3f + ph * 8f) * s
+                        p.color = withAlpha(0xFFD8D8E2.toInt(), (1f - ph) * 0.45f * a)
+                        c.drawCircle(px, py, rr, p)
+                    }
                 }
             }
         }
@@ -514,8 +547,8 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         var v = wd.ovar[i]
         val sx0 = Math.round((tx - camX) * t + w / 2f).toFloat()
         val sy0 = Math.round((ty - camY) * t + h / 2f).toFloat()
-        if (o == Ob.FAC || o == Ob.DOOR) {
-            drawFacade(c, o, tx, i, sx0, sy0)
+        if (o == Ob.FAC || o == Ob.DOOR || o == Ob.WALL) {
+            drawFacade(c, o, tx, ty, i, sx0, sy0)
             return
         }
         val hasN = isWallish(wd.objAt(tx, ty - 1))

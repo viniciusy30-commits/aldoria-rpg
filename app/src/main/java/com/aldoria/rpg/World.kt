@@ -11,7 +11,8 @@ object Gd {
     const val WOOD = 6
     const val CARPET = 7
     const val BRIDGE = 8
-    const val COUNT = 9
+    const val RUG = 9
+    const val COUNT = 10
 }
 
 /** Objetos que ficam em cima do chão. */
@@ -72,14 +73,14 @@ object Dc {
     const val COUNT = 13
 }
 
-/** Uma casa: [x0,y0] canto de cima/esquerda. A fachada (frente, virada pra baixo) ocupa as 2 últimas linhas. */
-class House(val x0: Int, val y0: Int, val hw: Int, val hh: Int, val style: Int) {
+/** Uma casa: [x0,y0] canto de cima/esquerda. A frente (virada pra baixo) é a última linha; o desenho dela é alto. */
+class House(val x0: Int, val y0: Int, val hw: Int, val hh: Int, val style: Int, val vr: Int) {
     /** quadrado da esquerda da porta dupla (a porta ocupa doorX e doorX+1) */
     val doorX = x0 + (hw - 2) / 2
-    /** linha de cima da fachada (parte alta da porta e janelas) */
-    val fu = y0 + hh - 2
-    /** linha de baixo da fachada (onde fica a soleira da porta) */
+    /** linha da fachada e da porta */
     val fl = y0 + hh - 1
+    /** última linha de dentro (o saguão, junto da porta) */
+    val fu = fl - 1
 }
 
 class World {
@@ -145,49 +146,59 @@ class World {
         return if (rand01(x, y, 19) < 0.07f) 4 + (hash2(x, y, 23) and 3) else tone
     }
 
-    /** Constrói uma casa grande: paredes por dentro, fachada de 2 andares com porta dupla por fora. */
-    private fun buildHouse(x0: Int, y0: Int, hw: Int, hh: Int, style: Int): House {
-        val hs = House(x0, y0, hw, hh, style)
+    /** Constrói uma casa: paredes por dentro, uma linha de fachada (alta) com porta dupla por fora. */
+    private fun buildHouse(x0: Int, y0: Int, hw: Int, hh: Int, style: Int, vr: Int): House {
+        val hs = House(x0, y0, hw, hh, style, vr)
         val id = houses.size
         houses.add(hs)
         for (yy in y0 until y0 + hh) for (xx in x0 until x0 + hw) {
             setG(xx, yy, Gd.WOOD)
             hid[yy * w + xx] = id
         }
-        // parede de trás e paredes laterais (só aparecem quando você entra)
-        for (xx in x0 until x0 + hw) setO(xx, y0, Ob.WALL, 0)
-        for (yy in y0 until hs.fu) {
+        // parede de trás (janelas, quadros e arandelas)
+        for (xx in x0 until x0 + hw) {
+            val rel = xx - x0
+            var kind = 0
+            if (rel == 2 || rel == hw - 3 || (hw >= 12 && (rel == 5 || rel == hw - 6))) kind = 1
+            else if (hw % 2 == 0 && (rel == hw / 2 - 1 || rel == hw / 2)) kind = 3
+            else if (hw % 2 == 1 && rel == hw / 2) kind = 3
+            else if (hw % 2 == 0 && (rel == hw / 2 - 2 || rel == hw / 2 + 1)) kind = 2
+            else if (hw % 2 == 1 && (rel == hw / 2 - 1 || rel == hw / 2 + 1)) kind = 2
+            setO(xx, y0, Ob.WALL, kind)
+        }
+        // paredes laterais
+        for (yy in y0 + 1 until hs.fl) {
             setO(x0, yy, Ob.WALL, 0)
             setO(x0 + hw - 1, yy, Ob.WALL, 0)
         }
-        // fachada (2 linhas) com porta dupla no meio
+        // fachada: porta dupla no meio, janelas, lanternas e hera
         val doorL = hs.doorX - x0
         for (xx in x0 until x0 + hw) {
             val rel = xx - x0
-            for (row in 0..1) {
-                val yy = if (row == 0) hs.fu else hs.fl
-                if (rel == doorL || rel == doorL + 1) {
-                    setO(xx, yy, Ob.DOOR, (rel - doorL) or (row shl 1) or (style shl 5))
-                    setG(xx, yy, Gd.STONE)
-                } else {
-                    var kind = 0
-                    if (row == 0) {
-                        if (rel == 1 || rel == hw - 2) kind = 1
-                        else if (rel == doorL - 1 || rel == doorL + 2) kind = 2
-                    } else {
-                        if (rel == doorL - 2 || rel == doorL + 3) kind = 1
-                        else if (rel == 1 || rel == hw - 2) kind = 3
-                    }
-                    val edge = if (rel == 0) 1 else if (rel == hw - 1) 2 else 0
-                    setO(xx, yy, Ob.FAC, kind or (edge shl 2) or (row shl 4) or (style shl 5))
-                }
+            if (rel == doorL || rel == doorL + 1) {
+                setO(xx, hs.fl, Ob.DOOR, (rel - doorL) or (style shl 1))
+                setG(xx, hs.fl, Gd.STONE)
+            } else {
+                val edge = if (rel == 0) 1 else if (rel == hw - 1) 2 else 0
+                val kind = if (rel == doorL - 1 || rel == doorL + 2) 2
+                else if (rel == 0 || rel == hw - 1) (if (id % 2 == 0) 3 else 0)
+                else if ((rel + id) % 2 == 1) 1
+                else if ((rel * 7 + id) % 3 == 0) 3 else 0
+                setO(xx, hs.fl, Ob.FAC, kind or (edge shl 2) or (style shl 4))
             }
         }
-        // janelas e tochas das paredes de dentro
-        wallKind(x0 + 2, y0, 1); wallKind(x0 + hw - 3, y0, 1); wallKind(x0 + hw / 2, y0, 2)
-        wallKind(x0, y0 + 3, 1); wallKind(x0 + hw - 1, y0 + 3, 1)
-        wallKind(x0, y0 + 1, 2); wallKind(x0 + hw - 1, y0 + 1, 2)
         return hs
+    }
+
+    /** Tapete com borda e franja: [rw] e [rh] precisam ser 2 ou mais. */
+    private fun rug(x0: Int, y0: Int, rw: Int, rh: Int, style: Int) {
+        for (yy in y0 until y0 + rh) for (xx in x0 until x0 + rw) {
+            val r = if (yy == y0) 0 else if (yy == y0 + rh - 1) 2 else 1
+            val c = if (xx == x0) 0 else if (xx == x0 + rw - 1) 2 else 1
+            val i = yy * w + xx
+            ground[i] = Gd.RUG
+            vari[i] = style * 9 + r * 3 + c
+        }
     }
 
     private fun wallKind(x: Int, y: Int, kind: Int) {
@@ -201,7 +212,7 @@ class World {
                 val i = y * w + x
                 var g = Gd.GRASS
                 val dLake = Math.hypot(x - 54.0, y - 9.0) / 10.0 + (smoothNoise(x / 4f, y / 4f, 11) - 0.5f) * 0.5f
-                val dPond = Math.hypot(x - 10.0, y - 38.0) / 6.0 + (smoothNoise(x / 3f, y / 3f, 12) - 0.5f) * 0.5f
+                val dPond = Math.hypot(x - 56.0, y - 38.0) / 6.0 + (smoothNoise(x / 3f, y / 3f, 12) - 0.5f) * 0.5f
                 val d = Math.min(dLake, dPond)
                 if (d < 0.62) g = Gd.WATER else if (d < 0.85) g = Gd.SHALLOW else if (d < 1.1) g = Gd.SAND
                 if (y >= 13) {
@@ -227,8 +238,8 @@ class World {
             }
         }
         // 3) cidade: limpa a área
-        for (y in 12..42) {
-            for (x in 20..44) {
+        for (y in 5..42) {
+            for (x in 5..44) {
                 val i = y * w + x
                 ground[i] = Gd.GRASS
                 vari[i] = grassTone(x, y)
@@ -238,7 +249,7 @@ class World {
         }
         // 4) estradas de terra (com ponte onde cruzam o rio)
         for (x in 0 until w) {
-            val inTown = x in 20..44
+            val inTown = x in 5..44
             val ry = if (inTown) 24 else 24 + Math.round((smoothNoise(x / 9f, 2f, 3) - 0.5f) * 5f)
             for (k in 0..1) {
                 val yy = ry + k
@@ -251,7 +262,7 @@ class World {
             }
         }
         for (y in 0 until h) {
-            val inTown = y in 12..42
+            val inTown = y in 5..42
             val rx = if (inTown) 32 else 32 + Math.round((smoothNoise(3f, y / 9f, 4) - 0.5f) * 5f)
             for (k in 0..1) {
                 val xx = rx + k
@@ -263,92 +274,132 @@ class World {
                 }
             }
         }
-        // 5) praça de pedra
-        for (y in 26..30) for (x in 27..37) setG(x, y, Gd.STONE)
+        // ruas internas (Rua Norte e Rua Sul)
+        for (x in 7..43) for (k in 0..1) {
+            setG(x, 20 + k, Gd.DIRT)
+            setG(x, 37 + k, Gd.DIRT)
+        }
+        // 5) praça de pedra no cruzamento
+        for (y in 20..28) for (x in 25..40) setG(x, y, Gd.STONE)
 
-        // 6) casas grandes (todas com a frente virada pra baixo)
-        buildHouse(22, 14, 9, 9, 0)
-        buildHouse(34, 14, 9, 10, 1)
-        buildHouse(22, 32, 9, 8, 2)
-        buildHouse(34, 32, 9, 8, 3)
-        for (hs in houses) for (k in 0..1) setG(hs.doorX + k, hs.fl + 1, Gd.DIRT)
-        for (x in 22..42) setG(x, 40, Gd.DIRT)
+        // 6) casas, todas diferentes (x0, y0, largura, altura, estilo, variação do telhado)
+        buildHouse(9, 9, 12, 11, 5, 1)    // Torre-casarão do mago
+        buildHouse(22, 11, 9, 9, 4, 2)    // Ferraria
+        buildHouse(35, 10, 8, 10, 1, 0)   // Casa de família
+        buildHouse(8, 28, 14, 9, 3, 1)    // Taverna (a mais larga)
+        buildHouse(23, 29, 8, 8, 2, 2)    // Alquimista
+        buildHouse(35, 30, 6, 7, 0, 0)    // Chalé
 
-        // 7) mobília das casas
-        // Casa 0: biblioteca e quarto do mago
-        for (yy in 18..20) for (xx in 24..28) setG(xx, yy, Gd.CARPET)
-        setO(23, 15, Ob.SHELF, 0); setO(24, 15, Ob.SHELF, 1); setO(25, 15, Ob.SHELF, 2)
-        setO(26, 15, Ob.FIRE, 0)
-        setO(27, 15, Ob.SHELF, 0); setO(28, 15, Ob.SHELF, 1); setO(29, 15, Ob.CHEST, 0)
-        setO(23, 17, Ob.BED, 0); setO(23, 20, Ob.CRATE, 0)
-        setO(28, 17, Ob.TABLE, 2); setO(27, 17, Ob.CHAIR, 0); setO(29, 17, Ob.CHAIR, 0)
-        setO(29, 19, Ob.CAULDRON, 0); setO(29, 20, Ob.BARREL, 0)
-        // Casa 1: casa de família, grande
-        for (yy in 17..20) for (xx in 36..40) setG(xx, yy, Gd.CARPET)
-        setO(35, 15, Ob.BED, 0); setO(36, 15, Ob.CHEST, 0); setO(37, 15, Ob.SHELF, 0)
-        setO(38, 15, Ob.FIRE, 0); setO(39, 15, Ob.SHELF, 1); setO(40, 15, Ob.SHELFP, 0); setO(41, 15, Ob.BED, 0)
-        setO(38, 18, Ob.TABLE, 0); setO(37, 18, Ob.CHAIR, 0); setO(39, 18, Ob.CHAIR, 0)
-        setO(38, 17, Ob.CHAIR, 0); setO(38, 19, Ob.CHAIR, 0)
-        setO(41, 17, Ob.CAULDRON, 0); setO(41, 19, Ob.BARREL, 0); setO(41, 20, Ob.BARREL, 1)
-        setO(35, 20, Ob.CRATE, 0); setO(35, 21, Ob.CRATE, 1)
-        // Casa 2: loja e taverna
-        for (yy in 36..37) for (xx in 24..28) setG(xx, yy, Gd.CARPET)
-        setO(23, 33, Ob.FIRE, 0); setO(24, 33, Ob.BARREL, 1)
-        setO(25, 33, Ob.SHELFP, 0); setO(26, 33, Ob.SHELFP, 1); setO(27, 33, Ob.SHELFP, 2)
-        setO(28, 33, Ob.BARREL, 0); setO(29, 33, Ob.CRATE, 0)
-        for (xx in 25..28) setO(xx, 35, Ob.COUNTER, xx % 2)
-        setO(29, 36, Ob.TABLE, 1); setO(28, 36, Ob.CHAIR, 0)
-        // Casa 3: alquimista
-        for (yy in 35..37) for (xx in 37..40) setG(xx, yy, Gd.CARPET)
-        for (xx in 35..39) setO(xx, 33, Ob.SHELFP, xx % 3)
-        setO(40, 33, Ob.SHELF, 0); setO(41, 33, Ob.CHEST, 0)
-        setO(41, 35, Ob.CAULDRON, 0); setO(41, 36, Ob.CAULDRON, 1)
-        setO(35, 35, Ob.TABLE, 0); setO(36, 35, Ob.TABLE, 1)
-        setO(35, 37, Ob.CRATE, 0); setO(41, 37, Ob.BARREL, 0)
+        // 7) mobília
+        // Mansão do mago: quarto nas pontas, lareira dupla no centro, mesa grande
+        rug(12, 12, 6, 4, 5)
+        setO(10, 10, Ob.BED, 0); setO(11, 10, Ob.CHEST, 0); setO(12, 10, Ob.SHELF, 0); setO(13, 10, Ob.SHELF, 1)
+        setO(14, 10, Ob.FIRE, 0); setO(15, 10, Ob.FIRE, 0)
+        setO(16, 10, Ob.SHELF, 2); setO(17, 10, Ob.SHELF, 0); setO(18, 10, Ob.CHEST, 0); setO(19, 10, Ob.BED, 0)
+        setO(14, 13, Ob.TABLE, 2); setO(15, 13, Ob.TABLE, 2)
+        setO(14, 12, Ob.CHAIR, 0); setO(15, 12, Ob.CHAIR, 0); setO(14, 14, Ob.CHAIR, 0); setO(15, 14, Ob.CHAIR, 0)
+        setO(13, 13, Ob.CHAIR, 0); setO(16, 13, Ob.CHAIR, 0)
+        setO(10, 12, Ob.SHELF, 1); setO(10, 13, Ob.SHELF, 2); setO(19, 12, Ob.SHELF, 1); setO(19, 13, Ob.SHELF, 2)
+        setO(10, 15, Ob.CAULDRON, 0); setO(10, 16, Ob.BARREL, 0); setO(19, 15, Ob.CAULDRON, 0); setO(19, 16, Ob.BARREL, 1)
+        setO(10, 17, Ob.PLANTER, 0); setO(19, 17, Ob.PLANTER, 1)
+        // Ferraria: forja no fundo, balcão e barris
+        rug(24, 16, 4, 2, 4)
+        setO(23, 12, Ob.SHELFP, 0); setO(24, 12, Ob.SHELFP, 1); setO(25, 12, Ob.CAULDRON, 0); setO(26, 12, Ob.FIRE, 0)
+        setO(27, 12, Ob.CAULDRON, 1); setO(28, 12, Ob.SHELFP, 2); setO(29, 12, Ob.SHELFP, 0)
+        for (xx in 24..27) setO(xx, 15, Ob.COUNTER, xx % 2)
+        setO(23, 13, Ob.CHEST, 0); setO(23, 14, Ob.BARREL, 0); setO(23, 15, Ob.BARREL, 1); setO(23, 16, Ob.CRATE, 0)
+        setO(29, 14, Ob.BARREL, 1); setO(29, 15, Ob.BARREL, 0); setO(29, 16, Ob.CRATE, 1); setO(29, 13, Ob.CRATE, 0)
+        // Casa de família: lareira dupla, camas nos cantos, mesa de jantar
+        rug(37, 13, 4, 4, 1)
+        setO(36, 11, Ob.BED, 0); setO(37, 11, Ob.CHEST, 0); setO(38, 11, Ob.FIRE, 0); setO(39, 11, Ob.FIRE, 0)
+        setO(40, 11, Ob.CHEST, 0); setO(41, 11, Ob.BED, 0)
+        setO(38, 14, Ob.TABLE, 0); setO(39, 14, Ob.TABLE, 0)
+        setO(37, 14, Ob.CHAIR, 0); setO(40, 14, Ob.CHAIR, 0); setO(38, 13, Ob.CHAIR, 0); setO(39, 13, Ob.CHAIR, 0)
+        setO(38, 15, Ob.CHAIR, 0); setO(39, 15, Ob.CHAIR, 0)
+        setO(36, 13, Ob.SHELF, 0); setO(36, 14, Ob.SHELF, 1); setO(41, 13, Ob.SHELF, 2)
+        setO(41, 14, Ob.CAULDRON, 0); setO(41, 15, Ob.BARREL, 0); setO(41, 16, Ob.CRATE, 0)
+        setO(36, 16, Ob.BARREL, 1); setO(36, 17, Ob.CRATE, 1)
+        // Taverna: barris e prateleiras no fundo, balcão, duas mesas
+        rug(13, 32, 4, 3, 3)
+        setO(9, 29, Ob.BARREL, 0); setO(10, 29, Ob.BARREL, 1)
+        setO(11, 29, Ob.SHELFP, 0); setO(12, 29, Ob.SHELFP, 1); setO(13, 29, Ob.SHELFP, 2)
+        setO(14, 29, Ob.FIRE, 0); setO(15, 29, Ob.FIRE, 0)
+        setO(16, 29, Ob.SHELFP, 0); setO(17, 29, Ob.SHELFP, 1); setO(18, 29, Ob.SHELFP, 2)
+        setO(19, 29, Ob.BARREL, 0); setO(20, 29, Ob.BARREL, 1)
+        for (xx in 11..18) setO(xx, 31, Ob.COUNTER, xx % 2)
+        setO(11, 33, Ob.TABLE, 1); setO(12, 33, Ob.TABLE, 1); setO(17, 33, Ob.TABLE, 1); setO(18, 33, Ob.TABLE, 1)
+        setO(10, 33, Ob.CHAIR, 0); setO(13, 33, Ob.CHAIR, 0); setO(16, 33, Ob.CHAIR, 0); setO(19, 33, Ob.CHAIR, 0)
+        setO(11, 34, Ob.CHAIR, 0); setO(12, 34, Ob.CHAIR, 0); setO(17, 34, Ob.CHAIR, 0); setO(18, 34, Ob.CHAIR, 0)
+        setO(9, 31, Ob.CRATE, 0); setO(9, 32, Ob.CRATE, 1); setO(20, 31, Ob.CRATE, 1); setO(20, 32, Ob.CRATE, 0)
+        setO(9, 34, Ob.PLANTER, 2); setO(20, 34, Ob.PLANTER, 0)
+        // Alquimista: prateleiras, caldeirões e mesa de trabalho
+        rug(25, 33, 4, 2, 2)
+        setO(24, 30, Ob.SHELFP, 0); setO(25, 30, Ob.SHELFP, 1); setO(26, 30, Ob.SHELF, 0)
+        setO(27, 30, Ob.SHELF, 1); setO(28, 30, Ob.SHELFP, 2); setO(29, 30, Ob.SHELFP, 0)
+        setO(26, 32, Ob.TABLE, 0); setO(27, 32, Ob.TABLE, 0); setO(25, 32, Ob.CHAIR, 0); setO(28, 32, Ob.CHAIR, 0)
+        setO(24, 31, Ob.CAULDRON, 1); setO(29, 31, Ob.CAULDRON, 1); setO(24, 32, Ob.CAULDRON, 0); setO(29, 32, Ob.CAULDRON, 0)
+        setO(24, 33, Ob.BARREL, 0); setO(29, 33, Ob.BARREL, 1); setO(24, 34, Ob.CRATE, 0); setO(29, 34, Ob.CRATE, 1)
+        // Chalé: aconchegante
+        rug(37, 33, 2, 2, 0)
+        setO(36, 31, Ob.BED, 0); setO(37, 31, Ob.SHELF, 0); setO(38, 31, Ob.FIRE, 0); setO(39, 31, Ob.CHEST, 0)
+        setO(36, 32, Ob.CRATE, 0); setO(39, 32, Ob.CAULDRON, 0)
+        setO(39, 33, Ob.TABLE, 1); setO(39, 34, Ob.CHAIR, 0); setO(36, 33, Ob.BARREL, 0); setO(36, 34, Ob.BARREL, 1)
 
-        // enfeites na frente das casas (lampiões, vasos de flores e placas)
+        // enfeites na frente das casas: vasos, lampiões e placas
+        val signs = intArrayOf(2, 0, -1, 3, 1, -1)
         for (k in houses.indices) {
             val hs = houses[k]
             val ly = hs.fl + 1
-            if (ly < 24 || ly > 25) {
-                setO(hs.doorX - 1, ly, Ob.PLANTER, k % 3)
-                setO(hs.doorX + 2, ly, Ob.PLANTER, (k + 1) % 3)
-                setO(hs.x0 + 1, ly, Ob.LAMP, 0)
-                setO(hs.x0 + hs.hw - 2, ly, Ob.SIGN, intArrayOf(2, 3, 0, 1)[k])
-            }
+            setO(hs.doorX - 1, ly, Ob.PLANTER, k % 3)
+            setO(hs.doorX + 2, ly, Ob.PLANTER, (k + 1) % 3)
+            setO(hs.x0 + 1, ly, Ob.LAMP, 0)
+            if (signs[k] >= 0) setO(hs.x0 + hs.hw - 2, ly, Ob.SIGN, signs[k])
         }
 
-        // 8) cerca da cidade (com portões nas estradas) e lampiões
-        for (x in 21..43) {
+        // 8) cerca da vila (com portões nas estradas) e lampiões
+        for (x in 7..43) {
             if (x !in 31..34) {
-                setO(x, 13, Ob.FENCE, 0)
+                setO(x, 6, Ob.FENCE, 0)
                 setO(x, 41, Ob.FENCE, 0)
             }
         }
-        for (y in 13..41) {
+        for (y in 6..41) {
             if (y !in 23..26) {
-                setO(21, y, Ob.FENCE, 0)
+                setO(7, y, Ob.FENCE, 0)
                 setO(43, y, Ob.FENCE, 0)
             }
         }
-        setO(30, 41, Ob.LAMP, 0); setO(35, 41, Ob.LAMP, 0)
-        setO(21, 22, Ob.LAMP, 0); setO(21, 27, Ob.LAMP, 0); setO(43, 22, Ob.LAMP, 0); setO(43, 27, Ob.LAMP, 0)
-        setO(31, 18, Ob.LAMP, 0); setO(31, 36, Ob.LAMP, 0)
+        setO(30, 6, Ob.LAMP, 0); setO(35, 6, Ob.LAMP, 0); setO(30, 41, Ob.LAMP, 0); setO(35, 41, Ob.LAMP, 0)
+        setO(7, 22, Ob.LAMP, 0); setO(7, 27, Ob.LAMP, 0); setO(43, 22, Ob.LAMP, 0); setO(43, 27, Ob.LAMP, 0)
 
-        // 9) praça: fonte, estátua do mago, bancos, vasos, barracas e poço
-        setO(32, 29, Ob.FOUNTAIN, 0)
-        setO(32, 27, Ob.STATUE, 0)
-        setO(28, 26, Ob.LAMP, 0); setO(36, 26, Ob.LAMP, 0); setO(28, 30, Ob.LAMP, 0); setO(36, 30, Ob.LAMP, 0)
-        setO(29, 28, Ob.BENCH, 0); setO(35, 28, Ob.BENCH, 0)
-        setO(30, 27, Ob.PLANTER, 0); setO(34, 27, Ob.PLANTER, 1); setO(30, 29, Ob.PLANTER, 2); setO(34, 29, Ob.PLANTER, 0)
-        setO(25, 27, Ob.STALL, 0); setO(39, 27, Ob.STALL, 1); setO(25, 30, Ob.STALL, 2); setO(39, 30, Ob.STALL, 3)
-        setO(23, 28, Ob.WELL, 0)
-        setO(23, 27, Ob.CRATE, 1); setO(41, 28, Ob.BARREL, 0)
-        // flores no gramado da cidade
+        // 9) praça: estátua no cruzamento, duas fontes, bancos, vasos, barracas de feira e poço
+        setO(32, 24, Ob.STATUE, 0)
+        setO(29, 23, Ob.FOUNTAIN, 0); setO(36, 23, Ob.FOUNTAIN, 0)
+        setO(24, 21, Ob.LAMP, 0); setO(41, 21, Ob.LAMP, 0); setO(26, 28, Ob.LAMP, 0); setO(39, 28, Ob.LAMP, 0)
+        setO(31, 21, Ob.LAMP, 0); setO(34, 21, Ob.LAMP, 0)
+        setO(27, 22, Ob.BENCH, 0); setO(38, 22, Ob.BENCH, 0); setO(27, 27, Ob.BENCH, 0); setO(38, 27, Ob.BENCH, 0)
+        setO(30, 22, Ob.PLANTER, 0); setO(35, 22, Ob.PLANTER, 1); setO(30, 27, Ob.PLANTER, 2); setO(35, 27, Ob.PLANTER, 0)
+        setO(26, 23, Ob.STALL, 0); setO(39, 23, Ob.STALL, 1); setO(26, 26, Ob.STALL, 2); setO(39, 26, Ob.STALL, 3)
+        setO(22, 26, Ob.WELL, 0)
+        setO(41, 26, Ob.BARREL, 0); setO(42, 26, Ob.CRATE, 1); setO(41, 22, Ob.CRATE, 0)
+        // árvores e arbustos nos gramados da vila
+        val oaks = arrayOf(
+            intArrayOf(9, 7), intArrayOf(13, 7), intArrayOf(17, 7), intArrayOf(21, 7), intArrayOf(25, 7), intArrayOf(29, 7),
+            intArrayOf(37, 7), intArrayOf(41, 7), intArrayOf(9, 22), intArrayOf(13, 23), intArrayOf(17, 22), intArrayOf(21, 23),
+            intArrayOf(10, 26), intArrayOf(14, 26), intArrayOf(18, 26), intArrayOf(42, 23), intArrayOf(9, 40), intArrayOf(13, 39),
+            intArrayOf(17, 40), intArrayOf(21, 39), intArrayOf(25, 40), intArrayOf(29, 39), intArrayOf(37, 40), intArrayOf(41, 39)
+        )
+        for ((n, p) in oaks.withIndex()) setO(p[0], p[1], Ob.OAK, n % 3)
+        val bushes = arrayOf(
+            intArrayOf(11, 22), intArrayOf(15, 23), intArrayOf(19, 22), intArrayOf(12, 26), intArrayOf(16, 26),
+            intArrayOf(11, 7), intArrayOf(19, 7), intArrayOf(27, 7), intArrayOf(39, 7), intArrayOf(15, 40), intArrayOf(23, 39), intArrayOf(30, 40)
+        )
+        for ((n, p) in bushes.withIndex()) setO(p[0], p[1], if (n % 2 == 0) Ob.BUSHF else Ob.BUSH, n % 4)
+        // flores no gramado da vila
         val rt = java.util.Random(5L)
-        for (i in 0 until 80) {
-            val fx = 22 + rt.nextInt(21)
-            val fy = 14 + rt.nextInt(27)
+        for (i in 0 until 160) {
+            val fx = 8 + rt.nextInt(35)
+            val fy = 7 + rt.nextInt(34)
             val idx = fy * w + fx
             if (ground[idx] == Gd.GRASS && obj[idx] == Ob.NONE) deco[idx] = Dc.FLOWER_R + rt.nextInt(4)
         }
@@ -357,7 +408,7 @@ class World {
         for (y in 0 until h) {
             for (x in 0 until w) {
                 val i = y * w + x
-                if (x in 20..44 && y in 12..42) continue
+                if (x in 5..44 && y in 5..42) continue
                 if (obj[i] != Ob.NONE) continue
                 val g = ground[i]
                 val f = smoothNoise(x / 5f, y / 5f, 7)
@@ -410,7 +461,7 @@ class World {
         }
 
         // 11) zona de proteção: a cidade toda
-        for (y in 13..41) for (x in 21..43) pz[y * w + x] = true
+        for (y in 6..41) for (x in 7..43) pz[y * w + x] = true
 
         // 12) pontos onde os monstros nascem: fora da cidade, no gramado
         val sr = java.util.Random(77L)
@@ -422,7 +473,7 @@ class World {
             val i = y * w + x
             if (ground[i] != Gd.GRASS || obj[i] != Ob.NONE) continue
             if (Math.hypot(x - 32.0, y - 24.0) < 16.0) continue
-            if (x in 17..47 && y in 9..45) continue
+            if (x in 3..47 && y in 3..45) continue
             var ok = true
             for (s in spawns) {
                 if (cheb(s[0], s[1], x, y) < 5) {
@@ -441,13 +492,8 @@ class World {
         if (hd >= 0) {
             val hs = houses[hd]
             if (obj[i] == Ob.DOOR) return 0xFF6B4423.toInt()
-            if (y >= hs.fu) return 0xFFD9CBB0.toInt()
-            return when (hs.style) {
-                0 -> 0xFFB5482F.toInt()
-                1 -> 0xFF4A5F86.toInt()
-                2 -> 0xFF4E7A44.toInt()
-                else -> 0xFFB8742F.toInt()
-            }
+            if (y >= hs.fl) return 0xFFD9CBB0.toInt()
+            return ArtHouse.roofColor(hs.style)
         }
         when (obj[i]) {
             Ob.OAK, Ob.PINE, Ob.DEAD -> return 0xFF1F5A24.toInt()
@@ -468,6 +514,7 @@ class World {
             Gd.DIRT -> 0xFF8A6A45.toInt()
             Gd.STONE -> 0xFFA0A0A8.toInt()
             Gd.WOOD, Gd.BRIDGE -> 0xFF8A5C2D.toInt()
+            Gd.RUG -> 0xFF9A2E3A.toInt()
             Gd.CARPET -> 0xFF8E2A33.toInt()
             else -> 0xFF3F8531.toInt()
         }

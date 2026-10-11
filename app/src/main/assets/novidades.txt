@@ -1,11 +1,11 @@
-#id 2026-10-11-a
-#titulo Casas novas e gigantes!
-- Casas muito maiores: 2 andares de fachada, janelas com floreiras, lanternas e hera nas paredes
-- Telhados de verdade com telhas, cumeeira, janelas de sótão e chaminé soltando fumaça
-- Por fora você só vê o telhado: entre na casa e ele some devagar para mostrar o interior
-- Porta dupla gigante em arco de pedra que abre sozinha quando você chega perto
-- 4 estilos de casa (terracota, ardósia azul, telhado de musgo e laranja) com interiores novos
-- Cidade maior com vasos, lampiões e placas na frente de cada casa; a janela acesa brilha à noite
+#id 2026-10-11-b
+#titulo A Vila de Aldoria cresceu!
+- Vila bem maior, com ruas, praça central com estátua, duas fontes, feira, poço, parque e cerca com portões
+- 6 casas diferentes: torre-casarão do mago, ferraria, casa de família, taverna larga, alquimista e chalé
+- Fachadas novas de dois andares: janelas em arco com cortinas e floreiras, lanternas, hera, barris e base de pedra
+- Porta dupla gigante em arco: abre quando você chega perto e você atravessa de verdade (sem ficar por cima dela)
+- Telhados com telhas, janelas de sótão e chaminés com fumaça; entre na casa e o telhado some devagar
+- Interiores refeitos: papel de parede, lambri, janelas com cortinas, quadros, arandelas, tapetes com franja e móveis organizados
 
 #id 2026-10-09-d
 #titulo Magias com animações insanas!

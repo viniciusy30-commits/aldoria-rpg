@@ -9,10 +9,11 @@ object Art {
         val s = size / 32
         val cache = HashMap<String, Bitmap>()
         return Array(Gd.COUNT) { g ->
-            Array(8) { v ->
+            Array(36) { v ->
                 val n = when (g) {
                     Gd.GRASS -> 8
                     Gd.CARPET, Gd.BRIDGE -> 1
+                    Gd.RUG -> 36
                     else -> 4
                 }
                 val vv = v % n
@@ -27,6 +28,7 @@ object Art {
                         Gd.WATER -> ArtGround.water(vv, false)
                         Gd.WOOD -> ArtGround.wood(vv)
                         Gd.CARPET -> ArtGround.carpet()
+                        Gd.RUG -> ArtHouse.rug(vv)
                         else -> ArtGround.bridge()
                     }
                     pb.toBitmap(s)

@@ -13,6 +13,7 @@ object Art {
                 val n = when (g) {
                     Gd.GRASS -> 8
                     Gd.CARPET, Gd.BRIDGE -> 1
+                    Gd.WOOD -> 8
                     Gd.RUG -> 63
                     else -> 4
                 }
@@ -26,7 +27,7 @@ object Art {
                         Gd.STONE -> ArtGround.stone(vv)
                         Gd.SHALLOW -> ArtGround.water(vv, true)
                         Gd.WATER -> ArtGround.water(vv, false)
-                        Gd.WOOD -> ArtGround.wood(vv)
+                        Gd.WOOD -> if (vv >= 4) ArtTavern.floor(vv - 4) else ArtGround.wood(vv)
                         Gd.CARPET -> ArtGround.carpet()
                         Gd.RUG -> ArtHouse.rug(vv)
                         else -> ArtGround.bridge()
@@ -95,6 +96,12 @@ object Art {
             out[Ob.COUNTER][v] = ArtFurn.counter(v).toBitmap(s)
         }
         out[Ob.CHEST][0] = ArtFurn.chest().toBitmap(s)
+        // variantes da Taverna
+        out[Ob.TABLE][3] = ArtTavern.table(0).toBitmap(s)
+        out[Ob.TABLE][4] = ArtTavern.table(1).toBitmap(s)
+        out[Ob.CHAIR][1] = ArtTavern.stool().toBitmap(s)
+        for (v in 0 until 3) out[Ob.COUNTER][2 + v] = ArtTavern.counter(v).toBitmap(s)
+        out[Ob.BARREL][2] = ArtTavern.cask().toBitmap(s)
         return out
     }
 

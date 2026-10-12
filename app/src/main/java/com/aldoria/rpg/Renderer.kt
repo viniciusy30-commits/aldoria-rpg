@@ -500,7 +500,7 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         var bm = tileCache[key]
         if (bm == null) {
             val big = ArtHouse.doorBig(style, kind, frame)
-            for (pr in 0..1) tileCache[2000000 + (((kind * 8 + style) * 2 + pr) * 8 + frame)] = ArtHouse.crop(big, pr * 32, 0, 32, 64).toBitmap(s)
+            for (pr in 0..1) tileCache[2000000 + (((kind * 8 + style) * 2 + pr) * 8 + frame)] = ArtHouse.crop(big, pr * 32, 0, 32, big.h).toBitmap(s)
             bm = tileCache[key]
         }
         if (bm == null) return

@@ -680,6 +680,7 @@ object ArtHouse {
 
     /** Parede de trás vista de dentro, 32x64. kind: 0 lisa, 1 janela com cortinas, 2 arandela, 3 quadro. */
     fun backWall(style: Int, kind: Int, edge: Int, frame: Int): PixBuf {
+        if (style == ArtTavern.STYLE) return ArtTavern.backWall(kind, edge, frame)
         val b = PixBuf(32, 64)
         val ia = IWA[style]
         val ib = IWB[style]
@@ -765,7 +766,6 @@ object ArtHouse {
         }
         if (edge == 1) { b.rect(0, 0, 3, 64, h(0xFF3A2410)); b.rect(2, 7, 1, 38, shadeCol(ia, -0.3f)) }
         if (edge == 2) { b.rect(29, 0, 3, 64, h(0xFF3A2410)); b.rect(29, 7, 1, 38, shadeCol(ia, -0.3f)) }
-        if (style == ArtTavern.STYLE) ArtTavern.backDecor(b, kind)
         return b
     }
 
@@ -848,6 +848,7 @@ object ArtHouse {
 
     /** Telhado da casa inteira. Tamanho: largura hw*32+22, altura 16 (chaminé) + 14 (beiral) + (hh-2)*32. */
     fun roof(style: Int, hw: Int, hh: Int, vr: Int): PixBuf {
+        if (style == ArtTavern.STYLE) return ArtTavern.roof()
         val ovl = 11
         val mt = 16
         val ov = 14
@@ -948,7 +949,6 @@ object ArtHouse {
             b.rect(chx - 2, ct - 3, cw + 4, 1, shadeCol(st, 0.1f))
             b.rect(chx + 2, ct - 2, cw - 4, 2, h(0xFF1A1210))
         }
-        if (style == ArtTavern.STYLE) ArtTavern.roofExtras(b, bw, yR)
         b.outline(h(0xFF2A1A0E))
         return b
     }

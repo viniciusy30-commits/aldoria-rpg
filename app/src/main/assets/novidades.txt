@@ -3,7 +3,7 @@
 - Cada casa tem a sua porta: portal arqueado do mago, portão de ferro da ferraria, porta azul da casa de família, porta com toldo da taverna, porta redonda do alquimista e porta rústica do chalé
 - Portas de tamanhos diferentes, com detalhes: dobradiças, maçanetas, vitrais, ferradura, hera e vasinho de flores
 - Paredes de fora no estilo medieval: base de pedra, vigas e postes de madeira, reboco com textura, seteiras de pedra, hera subindo e janelas em arco com venezianas, cortinas e jardineira
-- Corrigido: a tela não fica mais preta quando você chega perto da borda de cima (ou de qualquer lado) do mapa
+- Corrigido: a tela ficava preta ao chegar perto das casas do norte (ferraria e torre do mago); e a câmera não mostra mais o vazio fora do mapa
 
 #id 2026-10-11-b
 #titulo A Vila de Aldoria cresceu!

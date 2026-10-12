@@ -9,11 +9,11 @@ object Art {
         val s = size / 32
         val cache = HashMap<String, Bitmap>()
         return Array(Gd.COUNT) { g ->
-            Array(36) { v ->
+            Array(54) { v ->
                 val n = when (g) {
                     Gd.GRASS -> 8
                     Gd.CARPET, Gd.BRIDGE -> 1
-                    Gd.RUG -> 36
+                    Gd.RUG -> 54
                     else -> 4
                 }
                 val vv = v % n

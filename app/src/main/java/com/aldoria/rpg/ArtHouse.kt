@@ -3,6 +3,9 @@ package com.aldoria.rpg
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.hypot
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -75,17 +78,141 @@ object ArtHouse {
         for (i in 0 until 16) b.set(rn.nextInt(32), 59 + rn.nextInt(4), moss[rn.nextInt(3)])
     }
 
+    private fun wallTexture(b: PixBuf, style: Int, rn: java.util.Random) {
+        val pl = PL[style]
+        when (style) {
+            1 -> { // tábuas horizontais
+                for (y in 15 until 46) {
+                    val k = (y - 15) % 5
+                    if (k == 0) b.rect(0, y, 32, 1, shadeCol(pl, -0.2f)) else if (k == 1) b.rect(0, y, 32, 1, shadeCol(pl, 0.12f))
+                }
+                for (i in 0 until 60) b.set(rn.nextInt(32), 16 + rn.nextInt(29), shadeCol(pl, -0.08f))
+            }
+            4 -> { // pedra aparelhada
+                val mort = shadeCol(pl, -0.4f)
+                var y = 15
+                var row = 0
+                while (y < 46) {
+                    val hh = min(8, 46 - y)
+                    b.rect(0, y, 32, 1, mort)
+                    var x = if (row % 2 == 1) -6 else 0
+                    while (x < 32) {
+                        val bw = if ((x / 12 + row) % 2 == 0) 12 else 10
+                        if (x >= 0) b.rect(x, y, 1, hh, mort)
+                        for (k in 0 until bw - 1) b.set(x + 1 + k, y + 1, shadeCol(pl, 0.14f))
+                        b.rect(x + bw - 1, y + 1, 1, hh - 1, shadeCol(pl, -0.1f))
+                        for (q in 0 until 2) b.set(x + 2 + rn.nextInt(max(1, bw - 3)), y + 2 + rn.nextInt(max(1, hh - 3)), shadeCol(pl, if (rn.nextBoolean()) -0.12f else 0.1f))
+                        x += bw
+                    }
+                    y += 8
+                    row++
+                }
+            }
+            2 -> { // reboco de areia com manchas de tijolo
+                for (i in 0 until 150) b.set(rn.nextInt(32), 15 + rn.nextInt(31), shadeCol(pl, if (rn.nextBoolean()) 0.06f else -0.08f))
+                val patches = arrayOf(intArrayOf(2, 36, 9, 6), intArrayOf(20, 19, 8, 5))
+                for (pt in patches) {
+                    for (yy in pt[1] until pt[1] + pt[3]) for (xx in pt[0] until pt[0] + pt[2]) {
+                        var c = h(0xFFB5683C)
+                        if ((yy - pt[1]) % 2 == 1) c = shadeCol(c, -0.18f)
+                        else if ((xx - pt[0] + (yy - pt[1]) % 2 * 2) % 4 == 0) c = shadeCol(c, -0.25f)
+                        b.set(xx, yy, c)
+                    }
+                }
+            }
+            else -> { // reboco liso com rachaduras e manchas
+                for (i in 0 until 170) b.set(rn.nextInt(32), 15 + rn.nextInt(31), shadeCol(pl, if (rn.nextBoolean()) 0.05f else -0.07f))
+                for (k in 0 until 2) {
+                    var x = 3 + rn.nextInt(26)
+                    val y = 18 + rn.nextInt(8)
+                    for (j in 0 until 10) { b.set(x, y + j, shadeCol(pl, -0.18f)); x += rn.nextInt(3) - 1 }
+                }
+                for (k in 0 until 3) {
+                    val x = 4 + rn.nextInt(24)
+                    for (y in 36 until 46) if (rn.nextFloat() < 0.5f) b.set(x, y, shadeCol(pl, -0.09f))
+                }
+            }
+        }
+    }
+
+    /** Parede medieval: base de alvenaria, trave de madeira, reboco em cima e uma seteira de pedra. */
+    private fun plainWall(b: PixBuf, style: Int, rn: java.util.Random) {
+        val bm = BM[style]
+        val st = ST[style]
+        if (style != 4) {
+            val mort = shadeCol(st, -0.42f)
+            for (row in 0 until 2) {
+                val y = 33 + row * 7
+                val rh = if (row == 0) 7 else 6
+                b.rect(0, y, 32, rh, st)
+                b.rect(0, y, 32, 1, mort)
+                var x = if (row == 1) -5 else 0
+                while (x < 32) {
+                    val bw = if ((x / 11 + row) % 2 == 0) 11 else 9
+                    if (x >= 0) b.rect(x, y, 1, rh, mort)
+                    for (k in 0 until bw - 1) b.set(x + 1 + k, y + 1, shadeCol(st, 0.18f))
+                    b.rect(x + bw - 1, y + 1, 1, 5, shadeCol(st, -0.12f))
+                    for (q in 0 until 2) {
+                        val px = min(31, max(0, x + 2 + rn.nextInt(bw - 3)))
+                        b.set(px, y + 2 + rn.nextInt(4), shadeCol(st, if (rn.nextBoolean()) -0.15f else 0.12f))
+                    }
+                    x += bw
+                }
+            }
+            b.rect(0, 30, 32, 3, bm); b.rect(0, 30, 32, 1, shadeCol(bm, 0.3f)); b.rect(0, 32, 32, 1, shadeCol(bm, -0.4f))
+        }
+        val sx = 15
+        val top = 17
+        val bot = if (style != 4) 29 else 33
+        val sd = shadeCol(st, -0.25f)
+        val sl = shadeCol(st, 0.25f)
+        b.rect(sx - 3, top - 2, 8, bot - top + 5, st)
+        b.rect(sx - 3, top - 2, 8, 1, sl); b.rect(sx - 3, top - 2, 1, bot - top + 5, sl)
+        b.rect(sx + 4, top - 2, 1, bot - top + 5, sd); b.rect(sx - 3, bot + 2, 8, 1, sd)
+        val slit = h(0xFF14121C)
+        b.rect(sx, top, 2, bot - top + 1, slit)
+        b.rect(sx - 1, top + (bot - top) / 2, 4, 2, slit)
+        b.set(sx, top, h(0xFF2A2840)); b.set(sx + 1, bot, h(0xFF2A2840))
+        var y = top
+        while (y < bot) { b.set(sx + 1, y, h(0xFF22203A)); y += 2 }
+    }
+
+    /** Hera subindo pela parede, com florzinhas. */
+    private fun ivy(b: PixBuf, rn: java.util.Random) {
+        val gr = intArrayOf(h(0xFF2F7A3A), h(0xFF3F9A4A), h(0xFF58B85A), h(0xFF245E2E))
+        for (i in 0 until 150) {
+            val x = 4 + rn.nextInt(28)
+            val y = 16 + rn.nextInt(30)
+            val p = 0.12f + (y - 16) / 45f * 0.5f + (x - 4) / 60f
+            if (rn.nextFloat() < p) b.rect(x, y, 2, 2, gr[rn.nextInt(4)])
+        }
+        for (k in 0 until 3) {
+            val x = 14 + k * 7
+            for (y in 18 + k * 4 until 46) if (rn.nextFloat() < 0.7f) b.set(x + (if (rn.nextInt(3) == 2) 1 else 0), y, gr[3])
+        }
+        val fl = intArrayOf(h(0xFFFF8FB7), h(0xFFF5D547), h(0xFFFFFFFF))
+        for (i in 0 until 7) b.set(14 + rn.nextInt(17), 24 + rn.nextInt(20), fl[rn.nextInt(3)])
+    }
+
+    /** Postes de madeira nas laterais de cada pano de parede (estrutura de enxaimel). */
+    private fun posts(b: PixBuf, style: Int) {
+        val bm = BM[style]
+        b.rect(0, 15, 3, 31, bm); b.rect(0, 15, 1, 31, shadeCol(bm, 0.3f)); b.rect(2, 15, 1, 31, shadeCol(bm, -0.4f))
+        b.rect(29, 15, 3, 31, bm); b.rect(29, 15, 1, 31, shadeCol(bm, 0.3f)); b.rect(31, 15, 1, 31, shadeCol(bm, -0.4f))
+    }
+
     private fun windowTall(b: PixBuf, style: Int) {
         val ytop = 15
-        val wx0 = 6
-        val wx1 = 25
+        val wx0 = 7
+        val wx1 = 24
+        val ybot = 39
+        val stone = shadeCol(ST[style], 0.25f)
+        val stoneDk = shadeCol(ST[style], -0.2f)
         val fr = h(0xFF4A2F18)
-        val hi = h(0xFF7A5230)
         val r = (wx1 - wx0 + 1) / 2f
         val cx = wx0 + r
         val ycy = ytop + r
-        val ybot = 40
-        fun inside(x: Int, y: Int, rr: Float): Boolean {
+        fun ins(x: Int, y: Int, rr: Float): Boolean {
             return if (y < ycy) {
                 val dx = x + 0.5f - cx
                 val dy = y + 0.5f - ycy
@@ -93,63 +220,76 @@ object ArtHouse {
             } else (x + 0.5f >= cx - rr && x + 0.5f <= cx + rr && y <= ybot)
         }
         val sh = SH[style]
-        for (y in (ytop + 3)..ybot) {
-            for (x in intArrayOf(3, 4, 5, 26, 27, 28)) {
+        for (sx0 in intArrayOf(2, 25)) {
+            for (y in ytop + 4..ybot) for (x in sx0 until sx0 + 5) {
                 var c = sh
-                if ((y - ytop) % 3 == 0) c = shadeCol(sh, -0.3f)
-                if (x == 3 || x == 28) c = shadeCol(sh, -0.4f)
-                else if (x == 5 || x == 26) c = shadeCol(sh, 0.1f)
+                if ((y - ytop) % 3 == 0) c = shadeCol(sh, -0.32f) else if ((y - ytop) % 3 == 1) c = shadeCol(sh, 0.12f)
+                if (x == sx0) c = shadeCol(c, 0.2f)
+                if (x == sx0 + 4) c = shadeCol(c, -0.35f)
                 b.set(x, y, c)
             }
+            for (y in intArrayOf(ytop + 6, ybot - 2)) b.rect(sx0, y, 5, 1, h(0xFF2A2A32))
         }
-        for (y in (ytop - 1)..ybot) {
-            for (x in (wx0 - 2)..(wx1 + 2)) {
-                if (inside(x, y, r + 1.6f) && !inside(x, y, r - 1.5f)) b.set(x, y, fr)
-                else if (inside(x, y, r - 1.5f)) {
+        for (y in ytop - 3..ybot) {
+            for (x in wx0 - 3..wx1 + 3) {
+                if (ins(x, y, r + 2.6f) && !ins(x, y, r + 0.6f)) {
+                    var c = stone
+                    if (y < ycy) {
+                        val ang = Math.toDegrees(atan2(x + 0.5 - cx, -(y + 0.5 - ycy).toDouble()))
+                        if ((ang + 90.0) % 18.0 < 1.8) c = stoneDk
+                    } else {
+                        if (x == wx0 - 2) c = shadeCol(stone, 0.1f)
+                        if (y % 5 == 0) c = stoneDk
+                    }
+                    b.set(x, y, c)
+                } else if (ins(x, y, r + 0.6f) && !ins(x, y, r - 0.4f)) b.set(x, y, fr)
+                else if (ins(x, y, r - 0.4f)) {
                     val t = (y - ytop) / (ybot - ytop).toFloat()
-                    b.set(x, y, mixCol(h(0xFFCFEBF8), h(0xFF86BDDC), t))
+                    b.set(x, y, mixCol(h(0xFFCFEBF8), h(0xFF7FB4D6), t))
                 }
             }
         }
-        for (k in 0 until 9) {
-            val x = (cx - 6 + k).toInt()
-            val y = (ytop + 8 + (9 - k) * 1.4f).toInt()
-            b.set(x, y, h(0xFFEAF7FF)); b.set(x + 1, y, h(0xFFEAF7FF))
+        val kx = cx.toInt()
+        b.rect(kx - 2, ytop - 4, 4, 4, shadeCol(stone, 0.15f)); b.rect(kx - 2, ytop - 4, 4, 1, h(0xFFFFFFFF)); b.rect(kx - 2, ytop - 1, 4, 1, stoneDk)
+        val cur = CURT[style]
+        for (y in ycy.toInt() + 1 until ybot - 4) for (k in 0 until 4) {
+            val cc = if (k % 2 == 0) cur else shadeCol(cur, -0.25f)
+            if (ins(wx0 + 1 + k, y, r - 1f)) b.set(wx0 + 1 + k, y, cc)
+            if (ins(wx1 - k, y, r - 1f)) b.set(wx1 - k, y, cc)
         }
-        for (y in ytop until ybot) if (inside(cx.toInt(), y, r - 1.5f)) { b.set(cx.toInt() - 1, y, fr); b.set(cx.toInt(), y, fr) }
+        for (k in 0 until 7) {
+            val x = (cx - 4 + k).toInt()
+            val y = (ytop + 6 + (7 - k) * 1.5f).toInt()
+            if (ins(x, y, r - 1.5f)) { b.set(x, y, h(0xFFEAF7FF)); b.set(x + 1, y, h(0xFFEAF7FF)) }
+        }
+        for (y in ytop until ybot) if (ins(kx, y, r - 0.4f)) { b.set(kx - 1, y, fr); b.set(kx, y, fr) }
         val my = (ycy + 4).toInt()
-        for (x in wx0..wx1) if (inside(x, my, r - 1.5f)) { b.set(x, my, fr); b.set(x, my + 1, fr) }
-        val cur = shadeCol(sh, 0.35f)
-        for (y in (ycy.toInt() - 1) until (ybot - 3)) {
-            for (k in 0 until 3) {
-                if (inside(wx0 + 2 + k, y, r - 1.6f)) b.set(wx0 + 2 + k, y, if (k != 1) cur else shadeCol(cur, -0.2f))
-                if (inside(wx1 - 2 - k, y, r - 1.6f)) b.set(wx1 - 2 - k, y, if (k != 1) cur else shadeCol(cur, -0.2f))
-            }
-        }
-        for (y in (ytop - 1)..ybot) {
-            for (x in (wx0 - 2)..(wx1 + 2)) {
-                if (inside(x, y, r + 1.6f) && !inside(x, y, r - 1.5f) && !inside(x - 1, y, r + 1.6f)) b.set(x, y, hi)
-            }
-        }
-        b.rect(wx0 - 3, 41, wx1 - wx0 + 7, 2, h(0xFFC4C4CE))
-        b.rect(wx0 - 3, 41, wx1 - wx0 + 7, 1, h(0xFFE2E2EA))
-        b.rect(wx0 - 3, 43, wx1 - wx0 + 7, 1, 0x66000000)
+        for (x in wx0..wx1) if (ins(x, my, r - 0.4f)) { b.set(x, my, fr); b.set(x, my + 1, fr) }
+        val ay = (ycy - 3).toInt()
+        for (x in wx0..wx1) if (ins(x, ay, r - 0.4f)) b.set(x, ay, fr)
+        b.rect(wx0 - 4, ybot + 1, wx1 - wx0 + 9, 2, h(0xFFD0D0DA))
+        b.rect(wx0 - 4, ybot + 1, wx1 - wx0 + 9, 1, h(0xFFF2F2F8))
+        b.rect(wx0 - 4, ybot + 3, wx1 - wx0 + 9, 1, 0x66000000)
+        for (bx in intArrayOf(wx0 - 2, wx1)) { b.rect(bx, ybot + 3, 2, 3, stone); b.rect(bx, ybot + 5, 2, 1, stoneDk) }
         val wd = h(0xFF8A5A2B)
-        b.rect(wx0, 42, wx1 - wx0 + 1, 5, wd)
-        b.rect(wx0, 42, wx1 - wx0 + 1, 1, h(0xFFB07A44))
-        b.rect(wx0, 46, wx1 - wx0 + 1, 1, h(0xFF4A2F18))
-        var x = wx0 + 4
-        while (x < wx1) { b.rect(x, 43, 1, 3, h(0xFF5A3A1E)); x += 5 }
+        val bw = wx1 - wx0 + 3
+        b.rect(wx0 - 1, ybot + 3, bw, 5, wd); b.rect(wx0 - 1, ybot + 3, bw, 1, h(0xFFB07A44)); b.rect(wx0 - 1, ybot + 7, bw, 1, h(0xFF4A2F18))
+        var px = wx0 + 2
+        while (px < wx1) { b.rect(px, ybot + 4, 1, 3, h(0xFF5A3A1E)); px += 5 }
         val fc = intArrayOf(h(0xFFE8505B), h(0xFFFF8FB7), h(0xFFF5D547), h(0xFFFFFFFF), h(0xFFB06AE0))
         val rn = java.util.Random(style * 5L + 1)
-        for (k in 0 until (wx1 - wx0)) {
-            val xx = wx0 + 1 + k
+        for (k in 0 until wx1 - wx0 + 2) {
+            val xx = wx0 - 1 + k
+            b.set(xx, ybot + 2, if (k % 2 == 0) h(0xFF3F9A4A) else h(0xFF2F7A3A))
             if (k % 2 == 0) {
-                b.set(xx, 41, h(0xFF3F9A4A)); b.set(xx, 40, fc[rn.nextInt(5)])
-                if (rn.nextFloat() < 0.5f) b.set(xx, 39, fc[rn.nextInt(5)])
-            } else b.set(xx, 41, h(0xFF2F7A3A))
+                b.set(xx, ybot + 1, fc[rn.nextInt(5)])
+                if (rn.nextFloat() < 0.6f) b.set(xx, ybot, fc[rn.nextInt(5)])
+            }
         }
-        for (k in 0 until 6) b.set(wx0 + 1 + k * 4, 47, h(0xFF3F9A4A))
+        for (k in 0 until 5) {
+            b.set(wx0 + k * 4, ybot + 8, h(0xFF3F9A4A))
+            if (k % 2 == 0) b.set(wx0 + k * 4, ybot + 9, h(0xFF2F7A3A))
+        }
     }
 
     private fun lanternTall(b: PixBuf, style: Int, frame: Int) {
@@ -186,11 +326,7 @@ object ArtHouse {
         val st = ST[style]
         val rn = java.util.Random(1234L + style * 31 + kind * 13 + edge * 7)
         b.rect(0, 0, 32, 64, pl)
-        for (i in 0 until 130) b.set(rn.nextInt(32), 10 + rn.nextInt(40), shadeCol(pl, if (rn.nextBoolean()) 0.05f else -0.07f))
-        for (k in 0 until 3) {
-            val sx = 4 + rn.nextInt(24)
-            for (y in 16 until 46) if (rn.nextFloat() < 0.55f) b.set(sx, y, shadeCol(pl, -0.07f))
-        }
+        wallTexture(b, style, rn)
         val sh = floatArrayOf(-0.5f, -0.42f, -0.36f, -0.3f, -0.25f, -0.2f, -0.16f, -0.12f, -0.08f, -0.05f, -0.03f, -0.015f)
         for (y in sh.indices) b.rect(0, y, 32, 1, shadeCol(pl, sh[y]))
         b.rect(0, 0, 32, 2, shadeCol(bm, -0.45f)); b.rect(0, 2, 32, 3, bm); b.rect(0, 2, 32, 1, shadeCol(bm, 0.28f)); b.rect(0, 5, 32, 1, shadeCol(bm, -0.3f))
@@ -201,32 +337,13 @@ object ArtHouse {
         b.rect(0, 45, 32, 1, shadeCol(pl, -0.25f))
         b.rect(0, 46, 32, 3, bm); b.rect(0, 46, 32, 1, shadeCol(bm, 0.3f)); b.rect(0, 48, 32, 1, shadeCol(bm, -0.4f))
         b.rect(3, 15, 26, 1, shadeCol(pl, -0.15f))
+        if (kind != 4) posts(b, style)
         when (kind) {
-            0 -> {
-                for (t in 0 until 2) {
-                    b.line(5 + t, 17, 27 + t, 43, bm)
-                    b.line(27 - t, 17, 5 - t, 43, bm)
-                }
-                b.line(5, 17, 27, 43, bm)
-                b.line(6, 17, 28, 43, shadeCol(bm, 0.15f)); b.line(26, 17, 4, 43, shadeCol(bm, 0.15f))
-                b.rect(14, 28, 4, 4, shadeCol(pl, -0.12f)); b.rect(15, 29, 2, 2, bm)
-            }
+            0 -> plainWall(b, style, rn)
             1 -> windowTall(b, style)
             2 -> lanternTall(b, style, frame)
-            else -> {
-                for (k in -3 until 5) {
-                    b.line(14 + k * 6, 16, 14 + k * 6 + 14, 44, shadeCol(bm, 0.05f))
-                    b.line(14 + k * 6 + 14, 16, 14 + k * 6, 44, shadeCol(bm, 0.05f))
-                }
-                val gr = intArrayOf(h(0xFF2F7A3A), h(0xFF3F9A4A), h(0xFF58B85A), h(0xFF245E2E))
-                for (i in 0 until 90) {
-                    val x = 14 + rn.nextInt(16)
-                    val y = 16 + rn.nextInt(29)
-                    if (x + (y - 16) * 0.15f > 22f || rn.nextFloat() < 0.5f) b.rect(x, y, 2, 2, gr[rn.nextInt(4)])
-                }
-                val fl = intArrayOf(h(0xFFFF8FB7), h(0xFFF5D547), h(0xFFFFFFFF))
-                for (i in 0 until 7) b.set(16 + rn.nextInt(14), 18 + rn.nextInt(26), fl[rn.nextInt(3)])
-            }
+            3 -> ivy(b, rn)
+            else -> {}
         }
         plinth(b, 49, style, rn)
         if (kind == 3) {
@@ -266,77 +383,284 @@ object ArtHouse {
         return b
     }
 
-    /** Porta dupla gigante em arco (64x64). frame 0 fechada ... 4 aberta. O vão aberto fica transparente com sombra. */
-    fun doorBig(style: Int, frame: Int): PixBuf {
+    // ------------------------------------------------------------------ portas
+    // Cada casa tem a sua porta (tipo 0..5): 0 portal arqueado do mago, 1 portão de ferraria, 2 porta azul com cornija,
+    // 3 porta de taverna com toldo, 4 porta redonda do alquimista, 5 porta rústica do chalé.
+    const val DOOR_KINDS = 6
+    private val DS_SHAPE = intArrayOf(2, 0, 0, 1, 3, 1)       // 0 reta, 1 arco, 2 ogiva, 3 círculo
+    private val DS_LO = intArrayOf(15, 10, 20, 11, 19, 23)
+    private val DS_HI = intArrayOf(48, 53, 43, 52, 44, 40)
+    private val DS_TOP = intArrayOf(10, 28, 20, 24, 0, 30)
+    private val DS_DBL = booleanArrayOf(true, true, false, true, false, false)
+    private val DS_STONE = intArrayOf(h(0xFF8A8498), h(0xFF6E6E78), h(0xFFF2EBDD), h(0xFFA8987E), h(0xFF8E9A7A), h(0xFF9A9486))
+    private val DS_WOOD = intArrayOf(h(0xFF45315F), h(0xFF4A3220), h(0xFF4A78B8), h(0xFF8A3A2A), h(0xFF4F8F4A), h(0xFF9A6A3A))
+    private const val DBOT = 60
+
+    private fun doorIn(kind: Int, x: Int, y: Int, g: Int): Boolean {
+        val shape = DS_SHAPE[kind]
+        val lo = DS_LO[kind]
+        val hi = DS_HI[kind]
+        val top = DS_TOP[kind]
+        val fx = x + 0.5f
+        val fy = y + 0.5f
+        val wd = (hi - lo + 1).toFloat()
+        val cx = (lo + hi + 1) / 2f
+        when (shape) {
+            0 -> return x >= lo - g && x <= hi + g && y >= top - g && y <= DBOT
+            1 -> {
+                val r = wd / 2f + g
+                val cyc = top + wd / 2f
+                return if (fy < cyc) (fx - cx) * (fx - cx) + (fy - cyc) * (fy - cyc) <= r * r
+                else abs(fx - cx) <= r && y <= DBOT
+            }
+            2 -> {
+                val half = wd / 2f + g
+                val spring = top + wd * 0.62f
+                val tp = (top - g).toFloat()
+                if (fy >= spring) return abs(fx - cx) <= half && y <= DBOT
+                if (fy < tp) return false
+                val t = (spring - fy) / (spring - tp)
+                return abs(fx - cx) <= half * (1f - Math.pow(t.toDouble(), 1.9).toFloat())
+            }
+            else -> {
+                val r = wd / 2f + g
+                val cyc = DBOT + 1 - wd / 2f
+                return (fx - cx) * (fx - cx) + (fy - cyc) * (fy - cyc) <= r * r
+            }
+        }
+    }
+
+    /** Cor da folha da porta no ponto (lx, ly): lx conta a partir da dobradiça, ly a partir do topo do vão. */
+    private fun doorLeaf(kind: Int, lx: Int, ly: Int, wl: Int, hh: Int): Int {
+        val wood = DS_WOOD[kind]
+        val gold = GOLD
+        val goldHi = h(0xFFF4D878)
+        val iron = h(0xFF2E2E38)
+        val ironHi = h(0xFF8A8A98)
+        var c = wood
+        when (kind) {
+            0 -> {
+                c = if (lx % 4 == 3) shadeCol(wood, -0.28f) else if (lx % 4 == 0) shadeCol(wood, 0.1f) else wood
+                if (lx == 2) c = gold else if (lx == 3 || lx == wl - 3) c = shadeCol(gold, -0.3f)
+                val dd = hypot(lx + 0.5 - wl, ly + 0.5 - hh * 0.5)
+                if (dd >= 8.0 && dd < 9.6) c = gold
+                if (dd < 2.4) c = goldHi
+                if (dd > 2.4 && dd < 6.5 && (abs(lx + 0.5 - wl) < 0.9 || abs(ly + 0.5 - hh * 0.5) < 0.9)) c = gold
+                if (abs(ly + 0.5 - hh * 0.5) > 13 && (lx + ly) % 5 == 0 && lx < wl - 3) c = shadeCol(gold, -0.1f)
+                if (ly > hh - 6) c = if (lx % 4 != 0) shadeCol(wood, -0.35f) else shadeCol(wood, -0.2f)
+                val ky = (hh * 0.62f).toInt()
+                if (abs(lx - (wl - 5)) <= 1 && abs(ly - ky) <= 1) c = if (lx == wl - 5 && ly == ky) goldHi else gold
+            }
+            1 -> {
+                c = if (lx % 6 == 5) shadeCol(wood, -0.35f) else if (lx % 6 == 0) shadeCol(wood, 0.1f) else wood
+                for (sy in intArrayOf((hh * 0.2f).toInt(), (hh * 0.52f).toInt(), (hh * 0.82f).toInt())) {
+                    if (ly >= sy && ly <= sy + 2) {
+                        c = if (ly != sy) iron else shadeCol(iron, 0.15f)
+                        if (lx % 7 == 3 && ly == sy + 1) c = ironHi
+                    }
+                }
+                if (lx == wl - 1) c = shadeCol(wood, -0.3f)
+                val hx = wl - 6.0
+                val hy = (hh * 0.52f).toInt() + 7.0
+                val dd = hypot(lx + 0.5 - hx, ly + 0.5 - hy)
+                if (dd >= 3.0 && dd < 4.5) c = iron
+                if (dd < 1.4) c = ironHi
+            }
+            2 -> {
+                if (ly < 11) {
+                    c = mixCol(h(0xFF9AD4F0), h(0xFFDCF2FB), ly / 11f)
+                    if (lx % 7 == 3 || ly == 5) c = shadeCol(wood, -0.2f)
+                    if (lx < 2 || lx >= wl - 2) c = shadeCol(wood, 0.1f)
+                } else if (ly == 11) c = shadeCol(wood, 0.2f)
+                else if (ly == 12) c = shadeCol(wood, -0.3f)
+                else {
+                    for (k in 0..1) {
+                        val p0 = if (k == 0) 15 else 30
+                        val p1 = if (k == 0) 27 else hh - 5
+                        if (lx >= 4 && lx <= wl - 5 && ly >= p0 && ly <= p1) {
+                            c = if (lx == 4 || ly == p0) shadeCol(wood, -0.3f)
+                            else if (lx == wl - 5 || ly == p1) shadeCol(wood, 0.28f)
+                            else shadeCol(wood, 0.07f)
+                        }
+                    }
+                    if (ly >= hh - 3) c = shadeCol(wood, -0.25f)
+                }
+                val ky = (hh * 0.56f).toInt()
+                if (abs(lx - (wl - 4)) <= 1 && abs(ly - ky) <= 1) c = if (lx == wl - 4 && ly == ky) goldHi else gold
+            }
+            3 -> {
+                c = if (lx % 5 == 4) shadeCol(wood, -0.3f) else if (lx % 5 == 0) shadeCol(wood, 0.1f) else wood
+                if (ly in 3 until 15 && lx >= 3 && lx <= wl - 3) {
+                    c = mixCol(h(0xFFF6C860), h(0xFFE08A30), ly / 15f)
+                    if (lx == wl / 2 || ly == 9) c = shadeCol(wood, -0.45f)
+                    if (lx == 3 || ly == 3 || lx == wl - 3) c = shadeCol(wood, -0.4f)
+                }
+                if (ly > hh - 8) {
+                    c = if (ly > hh - 3) shadeCol(h(0xFFB88A3A), -0.2f) else h(0xFFC89A48)
+                    if (ly == hh - 7) c = goldHi
+                }
+                if (lx >= wl - 8 && lx <= wl - 3 && ly in 24..34)
+                    c = if (lx == wl - 8 || lx == wl - 3 || ly == 24 || ly == 34) gold else shadeCol(wood, -0.1f)
+                if ((lx == wl - 5 || lx == wl - 4) && ly in 36..47) c = if (lx == wl - 5) goldHi else gold
+            }
+            4 -> {
+                c = if (lx % 5 == 4) shadeCol(wood, -0.3f) else if (lx % 5 == 0) shadeCol(wood, 0.1f) else wood
+                for (sy in intArrayOf((hh * 0.28f).toInt(), (hh * 0.68f).toInt())) {
+                    if (lx <= 10 && ly >= sy && ly <= sy + 1) c = gold
+                }
+                val dd = hypot(lx + 0.5 - (wl - 6.5), ly + 0.5 - hh * 0.5)
+                if (dd < 3.0) c = if (dd < 1.6) goldHi else if (dd >= 2.2) shadeCol(gold, -0.35f) else gold
+            }
+            else -> {
+                c = if (lx % 5 == 4) shadeCol(wood, -0.3f) else if (lx % 5 == 0) shadeCol(wood, 0.12f) else wood
+                for (sy in intArrayOf((hh * 0.22f).toInt(), (hh * 0.68f).toInt())) {
+                    if (lx <= wl * 0.75f && ly >= sy && ly <= sy + 1) c = iron
+                    if (lx <= wl * 0.75f && ly == sy && lx % 6 == 2) c = ironHi
+                    if (abs(lx - wl * 0.75f) <= 1f && ly >= sy - 1 && ly <= sy + 2) c = iron
+                }
+                if (lx >= 5 && lx <= wl - 6 && ly in 6..11)
+                    c = if (lx == (wl - 1) / 2 || ly == 8) shadeCol(wood, -0.2f) else h(0xFF2E2230)
+                val dd = hypot(lx + 0.5 - (wl - 5.0), ly + 0.5 - (hh * 0.58f).toInt())
+                if (dd >= 1.6 && dd < 3.0) c = iron
+                if (dd < 1.2) c = ironHi
+            }
+        }
+        return c
+    }
+
+    /** Porta da casa (64x64 = 2 quadrados). Cada [kind] tem forma, tamanho e enfeites próprios. frame 0 fechada ... 4 aberta.
+     *  O vão aberto fica transparente com sombra para você ver o saguão. */
+    fun doorBig(style: Int, kind: Int, frame: Int): PixBuf {
         val big = PixBuf(64, 64)
-        for (c in 0..1) big.blit(facade(style, 0, 0, 0), c * 32, 0)
+        for (c in 0..1) big.blit(facade(style, 4, 0, 0), c * 32, 0)
+        val k = kind % DOOR_KINDS
+        val lo = DS_LO[k]
+        val hi = DS_HI[k]
+        val top = DS_TOP[k]
+        val wd = hi - lo + 1
+        val cx = (lo + hi + 1) / 2f
         val o = frame / 4f
-        val stone = h(0xFF9B9BA6)
-        val mortar = h(0xFF5A5A66)
-        val wood = h(0xFF7A4B25)
-        val woodDk = h(0xFF4E2F14)
-        val iron = h(0xFF2E2E36)
-        val wl = Math.round(24f * (1f - 0.86f * o))
-        val cy = 34f
+        val dbl = DS_DBL[k]
+        val stone = DS_STONE[k]
+        val mort = shadeCol(stone, -0.42f)
+        val outline = h(0xFF2A2230)
+        val gold = GOLD
+        val goldHi = h(0xFFF4D878)
+        val iron = h(0xFF2E2E38)
+        val ironHi = h(0xFF8A8A98)
+        val shape = DS_SHAPE[k]
+        val ringY = if (shape == 2) top + wd * 0.62f else if (shape == 1) top + wd / 2f else if (shape == 3) DBOT + 1 - wd / 2f else -1000f
+        // moldura de pedra
         for (y in 0 until 64) {
             for (x in 0 until 64) {
-                val fx = x + 0.5f
-                val fy = y + 0.5f
-                val inOuter: Boolean
-                val inOpen: Boolean
-                if (y < cy) {
-                    val dx = fx - 32f
-                    val dy = fy - cy
-                    val d2 = dx * dx + dy * dy
-                    inOuter = d2 <= 30f * 30f
-                    inOpen = d2 <= 24f * 24f
-                } else {
-                    inOuter = x in 2..61
-                    inOpen = x in 8..55 && y <= 60
-                }
-                if (!inOuter) continue
-                if (!inOpen) {
+                if (doorIn(k, x, y, 4) && !doorIn(k, x, y, 3) && y <= DBOT + 1) big.set(x, y, outline)
+                if (doorIn(k, x, y, 3) && !doorIn(k, x, y, 0)) {
                     var c = stone
-                    if (y < cy) {
-                        val dx = fx - 32f
-                        val dy = fy - cy
-                        val ang = Math.toDegrees(atan2(dx.toDouble(), (-dy).toDouble()))
-                        val dist = sqrt((dx * dx + dy * dy).toDouble()).toFloat()
-                        if (((ang + 90.0) % 15.0) < 1.4) c = mortar
-                        else if (dist > 28.2f) c = shadeCol(stone, 0.22f)
-                        else if (dist < 25.5f) c = shadeCol(stone, -0.2f)
-                        if (abs(dx) <= 3f && y <= 11) c = if (abs(dx) >= 2.5f || y >= 10) mortar else shadeCol(stone, 0.3f)
+                    if (k == 2) {
+                        if (!doorIn(k, x, y, 2)) c = shadeCol(stone, -0.08f)
+                        if (doorIn(k, x, y, 1)) c = shadeCol(stone, -0.25f)
                     } else {
-                        c = if (x < 5 || x > 58) shadeCol(stone, 0.12f) else shadeCol(stone, -0.14f)
-                        if (y % 7 == 0) c = mortar
-                        else if (((x + (y / 7) * 3) % 6) == 0) c = mortar
-                        if (y >= 61) c = if (y == 61) shadeCol(stone, 0.3f) else shadeCol(stone, -0.12f)
+                        if (!doorIn(k, x, y, 2)) c = shadeCol(stone, 0.2f)
+                        else if (doorIn(k, x, y, 1)) c = shadeCol(stone, -0.2f)
+                        if (y < ringY) {
+                            val ang = Math.toDegrees(atan2(x + 0.5 - cx, -(y + 0.5 - ringY).toDouble()))
+                            if (((ang + 90.0) % 16.0) < 1.6) c = mort
+                        } else if (y % 6 == 0 || (x + (y / 6) * 3) % 7 == 0) c = mort
                     }
                     big.set(x, y, c)
-                    continue
                 }
-                val onLeft = x < 8 + wl
-                val onRight = x > 55 - wl
-                if (onLeft || onRight) {
-                    val lx = if (onLeft) x - 8 else 55 - x
-                    var c = if (lx % 5 == 4) woodDk else if (lx % 5 == 0) shadeCol(wood, 0.12f) else wood
-                    if ((y in 24..26) || (y in 46..48)) {
-                        c = iron
-                        if (lx % 6 == 2 && (y == 25 || y == 47)) c = h(0xFF8A8A96)
-                    }
-                    if (y < 24) {
-                        val dd = sqrt(((fx - 32f) * (fx - 32f) + (fy - cy) * (fy - cy)).toDouble()).toFloat()
-                        if (dd > 21.2f) c = shadeCol(iron, 0.05f)
-                    }
-                    val edgeX = if (onLeft) x == 8 + wl - 1 else x == 55 - wl + 1
-                    if (edgeX) c = h(0xFF2A1A0E)
+            }
+        }
+        // soleira
+        for (y in DBOT + 1..62) for (x in lo - 3..hi + 3) big.set(x, y, if (y == DBOT + 1) shadeCol(stone, 0.1f) else shadeCol(stone, -0.2f))
+        // folhas
+        val wl0 = if (dbl) wd / 2 else wd
+        val wl = Math.round(wl0 * (1f - 0.86f * o))
+        val hh = DBOT - top + 1
+        for (y in 0 until 64) {
+            for (x in 0 until 64) {
+                if (!doorIn(k, x, y, 0)) continue
+                val ly = y - top
+                var lx = -1
+                var edge = false
+                if (dbl) {
+                    if (x < lo + wl) { lx = x - lo; edge = x == lo + wl - 1 }
+                    else if (x > hi - wl) { lx = hi - x; edge = x == hi - wl + 1 }
+                } else if (x < lo + wl) { lx = x - lo; edge = x == lo + wl - 1 }
+                if (lx >= 0) {
+                    var c = doorLeaf(k, lx, ly, wl0, hh)
+                    if (edge) c = h(0xFF2A1A0E)
                     if (o > 0f) c = shadeCol(c, -0.12f * o)
-                    if (o < 0.3f && y in 38..41 && (x in 29..34)) c = if (y == 38 || y == 41 || x == 29 || x == 34) iron else h(0xFFB8A070)
                     big.set(x, y, c)
                 } else {
                     val a = (0xA0 * (1f - (y - 8) / 52f) + 0x30).toInt().coerceIn(0, 255)
                     big.set(x, y, a shl 24)
                 }
+            }
+        }
+        // enfeites
+        val ix = cx.toInt()
+        when (k) {
+            0 -> {
+                big.rect(ix - 2, top, 4, 3, goldHi); big.rect(ix - 1, top + 3, 2, 1, gold); big.set(ix, top - 3, goldHi)
+                big.set(ix - 1, top - 3, gold); big.set(ix + 1, top - 3, gold)
+            }
+            1 -> {
+                big.rect(lo - 4, top - 6, wd + 8, 4, h(0xFF5A3A22)); big.rect(lo - 4, top - 6, wd + 8, 1, h(0xFF7A5230)); big.rect(lo - 4, top - 3, wd + 8, 1, h(0xFF3A2410))
+                big.rect(lo - 3, top - 6, 2, 4, iron); big.rect(hi + 1, top - 6, 2, 4, iron)
+                val pts = intArrayOf(-3, 0, -3, 1, -3, 2, -2, 3, -1, 3, 0, 3, 1, 3, 2, 3, 3, 2, 3, 1, 3, 0)
+                var i = 0
+                while (i < pts.size) {
+                    val dy = pts[i + 1]
+                    big.set(ix + pts[i], top - 15 + dy, if (dy < 2) h(0xFFB8B8C4) else h(0xFF8A8A96))
+                    i += 2
+                }
+            }
+            2 -> {
+                for (i in 0 until 8) {
+                    big.rect(lo - 1 - i, top - 10 + i, wd + 2 + 2 * i, 1, shadeCol(stone, if (i == 0) 0.1f else if (i < 7) -0.05f else -0.3f))
+                    big.set(lo - 1 - i, top - 10 + i, outline); big.set(hi + 1 + i, top - 10 + i, outline)
+                }
+                big.rect(lo + 3, DBOT + 1, wd - 6, 2, h(0xFFB8602E)); big.rect(lo + 3, DBOT + 1, wd - 6, 1, h(0xFFD87A3E))
+            }
+            3 -> {
+                val yt = top - 8
+                for (y in yt until top + 4) {
+                    val inset = max(0, (yt + 3 - y) * 2)
+                    for (x in lo - 5 + inset..hi + 5 - inset) {
+                        var c = if (((x - lo + 5) / 4) % 2 == 0) h(0xFFB8372F) else h(0xFFF2E6CC)
+                        if (y == yt) c = shadeCol(c, 0.25f)
+                        if (y >= top + 1) {
+                            val kk = (x - lo + 5) % 4
+                            val bump = if (kk == 1 || kk == 2) top + 3 else top + 2
+                            if (y > bump) continue
+                            if (y == bump) c = shadeCol(c, -0.25f)
+                        }
+                        big.set(x, y, c)
+                    }
+                }
+            }
+            4 -> {
+                val rn = java.util.Random(7L)
+                val cyc = DBOT + 1 - wd / 2f
+                val leaf = intArrayOf(h(0xFF3E7A3A), h(0xFF5AA050), h(0xFF2E5E2E), h(0xFF7AC060))
+                for (i in 0 until 34) {
+                    val ang = Math.toRadians(160.0 + rn.nextDouble() * 170.0)
+                    val r = wd / 2.0 + 3 + (rn.nextDouble() * 2.5 - 1.0)
+                    val x = (cx + cos(ang) * r).toInt()
+                    val y = (cyc + sin(ang) * r).toInt()
+                    val cc = leaf[rn.nextInt(4)]
+                    if (y <= DBOT - 8) big.set(x, y, cc)
+                }
+                big.set(lo - 2, DBOT - 8, leaf[0]); big.set(lo - 3, DBOT - 5, leaf[0]); big.set(lo - 2, DBOT - 2, leaf[0])
+            }
+            else -> {
+                val px0 = lo - 9
+                big.rect(px0, DBOT - 6, 6, 7, h(0xFFB8602E)); big.rect(px0, DBOT - 6, 6, 1, h(0xFFD87A3E)); big.rect(px0 + 1, DBOT, 4, 1, h(0xFF8A4420))
+                big.set(px0 + 1, DBOT - 13, h(0xFF3E7A3A)); big.set(px0 + 2, DBOT - 14, h(0xFFD84A5A)); big.set(px0 + 3, DBOT - 13, h(0xFF3E7A3A))
+                big.set(px0 + 4, DBOT - 14, h(0xFFF4D060)); big.set(px0 + 2, DBOT - 12, h(0xFF3E7A3A)); big.set(px0 + 3, DBOT - 12, h(0xFF3E7A3A)); big.set(px0, DBOT - 12, h(0xFFD84A5A))
+                big.rect(hi + 5, DBOT - 3, 5, 4, h(0xFF7A7A82)); big.rect(hi + 5, DBOT - 3, 5, 1, h(0xFF9A9AA4))
+                big.set(hi + 6, DBOT - 4, h(0xFF3E7A3A)); big.set(hi + 8, DBOT - 4, h(0xFF4E9A4A))
             }
         }
         return big

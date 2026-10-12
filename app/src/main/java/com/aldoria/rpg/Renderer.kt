@@ -250,11 +250,17 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         glowP.xfermode = null
     }
 
+    /** Mantém a câmera dentro do mapa para não mostrar o vazio preto além da borda. */
+    private fun clampCam(v: Float, half: Float, size: Float): Float {
+        if (half * 2f >= size) return size / 2f
+        return v.coerceIn(half, size - half)
+    }
+
     fun draw(c: Canvas) {
         if (w == 0 || groundB == null) return
         val pl = g.player
-        camX = pl.fx + 0.5f
-        camY = pl.fy + 0.5f
+        camX = clampCam(pl.fx + 0.5f, w / 2f / tile, g.world.w.toFloat())
+        camY = clampCam(pl.fy + 0.5f, h / 2f / tile, g.world.h.toFloat())
         if (g.shake > 0f) {
             val amp = 0.12f * g.shakeAmp * min(1f, g.shake * 5f)
             camX += (Math.random().toFloat() - 0.5f) * amp
@@ -488,12 +494,13 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         // porta dupla
         val part = v and 1
         val style = (v shr 1) and 7
+        val kind = (v shr 4) and 7
         val frame = (doorO[hd] * 4f + 0.5f).toInt().coerceIn(0, 4)
-        val key = 2000000 + (style * 2 + part) * 8 + frame
+        val key = 2000000 + (((kind * 8 + style) * 2 + part) * 8 + frame)
         var bm = tileCache[key]
         if (bm == null) {
-            val big = ArtHouse.doorBig(style, frame)
-            for (pr in 0..1) tileCache[2000000 + (style * 2 + pr) * 8 + frame] = ArtHouse.crop(big, pr * 32, 0, 32, 64).toBitmap(s)
+            val big = ArtHouse.doorBig(style, kind, frame)
+            for (pr in 0..1) tileCache[2000000 + (((kind * 8 + style) * 2 + pr) * 8 + frame)] = ArtHouse.crop(big, pr * 32, 0, 32, 64).toBitmap(s)
             bm = tileCache[key]
         }
         if (bm == null) return

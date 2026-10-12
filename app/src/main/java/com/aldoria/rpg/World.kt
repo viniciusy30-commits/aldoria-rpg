@@ -176,7 +176,7 @@ class World {
         for (xx in x0 until x0 + hw) {
             val rel = xx - x0
             if (rel == doorL || rel == doorL + 1) {
-                setO(xx, hs.fl, Ob.DOOR, (rel - doorL) or (style shl 1))
+                setO(xx, hs.fl, Ob.DOOR, (rel - doorL) or (style shl 1) or ((id % ArtHouse.DOOR_KINDS) shl 4))
                 setG(xx, hs.fl, Gd.STONE)
             } else {
                 val edge = if (rel == 0) 1 else if (rel == hw - 1) 2 else 0

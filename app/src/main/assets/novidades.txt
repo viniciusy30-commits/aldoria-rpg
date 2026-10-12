@@ -1,3 +1,10 @@
+#id 2026-10-12-b
+#titulo Portas novas, paredes novas e câmera corrigida
+- Cada casa tem a sua porta: portal arqueado do mago, portão de ferro da ferraria, porta azul da casa de família, porta com toldo da taverna, porta redonda do alquimista e porta rústica do chalé
+- Portas de tamanhos diferentes, com detalhes: dobradiças, maçanetas, vitrais, ferradura, hera e vasinho de flores
+- Paredes de fora no estilo medieval: base de pedra, vigas e postes de madeira, reboco com textura, seteiras de pedra, hera subindo e janelas em arco com venezianas, cortinas e jardineira
+- Corrigido: a tela não fica mais preta quando você chega perto da borda de cima (ou de qualquer lado) do mapa
+
 #id 2026-10-11-b
 #titulo A Vila de Aldoria cresceu!
 - Vila bem maior, com ruas, praça central com estátua, duas fontes, feira, poço, parque e cerca com portões

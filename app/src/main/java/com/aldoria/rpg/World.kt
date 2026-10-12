@@ -176,7 +176,7 @@ class World {
         for (xx in x0 until x0 + hw) {
             val rel = xx - x0
             if (rel == doorL || rel == doorL + 1) {
-                setO(xx, hs.fl, Ob.DOOR, (rel - doorL) or (style shl 1) or ((id % ArtHouse.DOOR_KINDS) shl 4))
+                setO(xx, hs.fl, Ob.DOOR, (rel - doorL) or (style shl 1) or ((if (style == ArtTavern.STYLE) ArtTavern.DOOR_KIND else id % ArtHouse.DOOR_KINDS) shl 4))
                 setG(xx, hs.fl, Gd.STONE)
             } else {
                 val edge = if (rel == 0) 1 else if (rel == hw - 1) 2 else 0
@@ -286,7 +286,7 @@ class World {
         buildHouse(9, 9, 12, 11, 5, 1)    // Torre-casarão do mago
         buildHouse(22, 11, 9, 9, 4, 2)    // Ferraria
         buildHouse(35, 10, 8, 10, 1, 0)   // Casa de família
-        buildHouse(8, 28, 14, 9, 3, 1)    // Taverna (a mais larga)
+        buildHouse(8, 28, 14, 9, 6, 1)    // Taverna "Caneca Dourada" (estilo próprio)
         buildHouse(23, 29, 8, 8, 2, 2)    // Alquimista
         buildHouse(35, 30, 6, 7, 0, 0)    // Chalé
 
@@ -319,19 +319,24 @@ class World {
         setO(36, 13, Ob.SHELF, 0); setO(36, 14, Ob.SHELF, 1); setO(41, 13, Ob.SHELF, 2)
         setO(41, 14, Ob.CAULDRON, 0); setO(41, 15, Ob.BARREL, 0); setO(41, 16, Ob.CRATE, 0)
         setO(36, 16, Ob.BARREL, 1); setO(36, 17, Ob.CRATE, 1)
-        // Taverna: barris e prateleiras no fundo, balcão, duas mesas
-        rug(13, 32, 4, 3, 3)
+        // Taverna "Caneca Dourada": lareira e prateleiras no fundo, balcão com bancos, mesas dos dois lados, tapete no meio
+        rug(13, 32, 4, 3, 6)
         setO(9, 29, Ob.BARREL, 0); setO(10, 29, Ob.BARREL, 1)
         setO(11, 29, Ob.SHELFP, 0); setO(12, 29, Ob.SHELFP, 1); setO(13, 29, Ob.SHELFP, 2)
         setO(14, 29, Ob.FIRE, 0); setO(15, 29, Ob.FIRE, 0)
         setO(16, 29, Ob.SHELFP, 0); setO(17, 29, Ob.SHELFP, 1); setO(18, 29, Ob.SHELFP, 2)
         setO(19, 29, Ob.BARREL, 0); setO(20, 29, Ob.BARREL, 1)
+        setO(9, 30, Ob.CRATE, 1); setO(20, 30, Ob.BARREL, 0)
         for (xx in 11..18) setO(xx, 31, Ob.COUNTER, xx % 2)
-        setO(11, 33, Ob.TABLE, 1); setO(12, 33, Ob.TABLE, 1); setO(17, 33, Ob.TABLE, 1); setO(18, 33, Ob.TABLE, 1)
-        setO(10, 33, Ob.CHAIR, 0); setO(13, 33, Ob.CHAIR, 0); setO(16, 33, Ob.CHAIR, 0); setO(19, 33, Ob.CHAIR, 0)
-        setO(11, 34, Ob.CHAIR, 0); setO(12, 34, Ob.CHAIR, 0); setO(17, 34, Ob.CHAIR, 0); setO(18, 34, Ob.CHAIR, 0)
-        setO(9, 31, Ob.CRATE, 0); setO(9, 32, Ob.CRATE, 1); setO(20, 31, Ob.CRATE, 1); setO(20, 32, Ob.CRATE, 0)
-        setO(9, 34, Ob.PLANTER, 2); setO(20, 34, Ob.PLANTER, 0)
+        setO(11, 32, Ob.CHAIR, 0); setO(12, 32, Ob.CHAIR, 0); setO(17, 32, Ob.CHAIR, 0); setO(18, 32, Ob.CHAIR, 0)
+        setO(9, 31, Ob.CRATE, 0); setO(9, 32, Ob.BARREL, 1); setO(20, 31, Ob.BARREL, 1); setO(20, 32, Ob.CRATE, 0)
+        setO(10, 34, Ob.TABLE, 1); setO(11, 34, Ob.TABLE, 1); setO(18, 34, Ob.TABLE, 1); setO(19, 34, Ob.TABLE, 1)
+        setO(10, 33, Ob.CHAIR, 0); setO(11, 33, Ob.CHAIR, 0); setO(10, 35, Ob.CHAIR, 0); setO(11, 35, Ob.CHAIR, 0)
+        setO(9, 34, Ob.CHAIR, 0); setO(12, 34, Ob.CHAIR, 0)
+        setO(18, 33, Ob.CHAIR, 0); setO(19, 33, Ob.CHAIR, 0); setO(18, 35, Ob.CHAIR, 0); setO(19, 35, Ob.CHAIR, 0)
+        setO(17, 34, Ob.CHAIR, 0); setO(20, 34, Ob.CHAIR, 0)
+        setO(9, 33, Ob.CHEST, 0); setO(20, 33, Ob.CHEST, 0)
+        setO(9, 35, Ob.PLANTER, 2); setO(20, 35, Ob.PLANTER, 0)
         // Alquimista: prateleiras, caldeirões e mesa de trabalho
         rug(25, 33, 4, 2, 2)
         setO(24, 30, Ob.SHELFP, 0); setO(25, 30, Ob.SHELFP, 1); setO(26, 30, Ob.SHELF, 0)

@@ -13,19 +13,19 @@ import kotlin.math.sqrt
 /** Arte das casas da vila: fachada alta, porta dupla, telhado, parede de fundo, parede lateral e tapetes.
  *  Estilos: 0 creme/terracota, 1 branca/ardósia, 2 areia/musgo, 3 branca/laranja, 4 pedra/escura (ferraria), 5 lilás/roxa (mago). */
 object ArtHouse {
-    const val STYLES = 6
+    const val STYLES = 7
 
-    private val PL = intArrayOf(h(0xFFE9DEC4), h(0xFFC9D0D8), h(0xFFE8CF98), h(0xFFF3EEE4), h(0xFF9A9AA4), h(0xFFE4DCEE))
-    private val BM = intArrayOf(h(0xFF5A3A22), h(0xFF343A52), h(0xFF6B4423), h(0xFF7A3B2A), h(0xFF3A3028), h(0xFF3A2A5A))
-    private val SH = intArrayOf(h(0xFF3F7A66), h(0xFFA8413A), h(0xFF3F6FA8), h(0xFF2F8C86), h(0xFF8A5A2B), h(0xFF4A7AC8))
-    private val ST = intArrayOf(h(0xFF8E8E98), h(0xFF7C8294), h(0xFF9A9486), h(0xFF8E8E98), h(0xFF74747E), h(0xFF8A8498))
-    private val IWA = intArrayOf(h(0xFF5E7F5A), h(0xFF7A2F3A), h(0xFFC8A46A), h(0xFF3C4E7A), h(0xFF6A6258), h(0xFF5A3A7A))
-    private val IWB = intArrayOf(h(0xFF71936A), h(0xFF923F4B), h(0xFFD9B97F), h(0xFF4D628F), h(0xFF7C7468), h(0xFF6E4C90))
-    private val RUG_BASE = intArrayOf(h(0xFF9A2E3A), h(0xFF2E4A9A), h(0xFF2E7A3E), h(0xFFB8602E), h(0xFF7A4A24), h(0xFF7A2E9A))
-    private val RUG_LITE = intArrayOf(h(0xFFB5424F), h(0xFF4262BA), h(0xFF429A55), h(0xFFD87A3E), h(0xFF98622E), h(0xFF9A42BA))
-    private val RUG_DARK = intArrayOf(h(0xFF6E1E28), h(0xFF1E2E6E), h(0xFF1E5028), h(0xFF8A4420), h(0xFF4E2E14), h(0xFF501E6E))
+    private val PL = intArrayOf(h(0xFFE9DEC4), h(0xFFC9D0D8), h(0xFFE8CF98), h(0xFFF3EEE4), h(0xFF9A9AA4), h(0xFFE4DCEE), h(0xFFE9D3A2))
+    private val BM = intArrayOf(h(0xFF5A3A22), h(0xFF343A52), h(0xFF6B4423), h(0xFF7A3B2A), h(0xFF3A3028), h(0xFF3A2A5A), h(0xFF3A2312))
+    private val SH = intArrayOf(h(0xFF3F7A66), h(0xFFA8413A), h(0xFF3F6FA8), h(0xFF2F8C86), h(0xFF8A5A2B), h(0xFF4A7AC8), h(0xFF8A2F2A))
+    private val ST = intArrayOf(h(0xFF8E8E98), h(0xFF7C8294), h(0xFF9A9486), h(0xFF8E8E98), h(0xFF74747E), h(0xFF8A8498), h(0xFF82776B))
+    private val IWA = intArrayOf(h(0xFF5E7F5A), h(0xFF7A2F3A), h(0xFFC8A46A), h(0xFF3C4E7A), h(0xFF6A6258), h(0xFF5A3A7A), h(0xFF8A6A44))
+    private val IWB = intArrayOf(h(0xFF71936A), h(0xFF923F4B), h(0xFFD9B97F), h(0xFF4D628F), h(0xFF7C7468), h(0xFF6E4C90), h(0xFF9C7A50))
+    private val RUG_BASE = intArrayOf(h(0xFF9A2E3A), h(0xFF2E4A9A), h(0xFF2E7A3E), h(0xFFB8602E), h(0xFF7A4A24), h(0xFF7A2E9A), h(0xFF8A2A2A))
+    private val RUG_LITE = intArrayOf(h(0xFFB5424F), h(0xFF4262BA), h(0xFF429A55), h(0xFFD87A3E), h(0xFF98622E), h(0xFF9A42BA), h(0xFFB04A3A))
+    private val RUG_DARK = intArrayOf(h(0xFF6E1E28), h(0xFF1E2E6E), h(0xFF1E5028), h(0xFF8A4420), h(0xFF4E2E14), h(0xFF501E6E), h(0xFF4E1414))
     private val GOLD = h(0xFFD8A640)
-    private val CURT = intArrayOf(h(0xFF8E2A33), h(0xFF2E4A9A), h(0xFF2E7A3E), h(0xFF7A2E9A), h(0xFF8E2A33), h(0xFF7A2E9A))
+    private val CURT = intArrayOf(h(0xFF8E2A33), h(0xFF2E4A9A), h(0xFF2E7A3E), h(0xFF7A2E9A), h(0xFF8E2A33), h(0xFF7A2E9A), h(0xFF8A2A2A))
 
     val ROOF = arrayOf(
         intArrayOf(h(0xFFB5482F), h(0xFFC2523A), h(0xFFA93F29), h(0xFFBC4B32)),
@@ -33,7 +33,8 @@ object ArtHouse {
         intArrayOf(h(0xFF5E8A48), h(0xFF6A9650), h(0xFF527A3E), h(0xFF74A058)),
         intArrayOf(h(0xFFB8742F), h(0xFFC48038), h(0xFFA8652A), h(0xFFBE7A34)),
         intArrayOf(h(0xFF4A4A58), h(0xFF55556A), h(0xFF3E3E4C), h(0xFF4E4E5E)),
-        intArrayOf(h(0xFF6A4A8A), h(0xFF76539A), h(0xFF5E4079), h(0xFF6C4C8C))
+        intArrayOf(h(0xFF6A4A8A), h(0xFF76539A), h(0xFF5E4079), h(0xFF6C4C8C)),
+        intArrayOf(h(0xFF8A3A28), h(0xFF9A4630), h(0xFF7A3022), h(0xFF92402C))
     )
 
     /** Cor de telhado para o minimapa. */
@@ -320,6 +321,7 @@ object ArtHouse {
     /** Uma coluna da fachada, 32x64 (2 quadrados de altura). kind: 0 liso com cruz, 1 janela, 2 lanterna, 3 hera e barril.
      *  edge: 1 canto esquerdo, 2 canto direito. */
     fun facade(style: Int, kind: Int, edge: Int, frame: Int): PixBuf {
+        if (style == ArtTavern.STYLE) return ArtTavern.facade(kind, edge, frame)
         val b = PixBuf(32, 64)
         val pl = PL[style]
         val bm = BM[style]
@@ -531,6 +533,7 @@ object ArtHouse {
     /** Porta da casa (64x64 = 2 quadrados). Cada [kind] tem forma, tamanho e enfeites próprios. frame 0 fechada ... 4 aberta.
      *  O vão aberto fica transparente com sombra para você ver o saguão. */
     fun doorBig(style: Int, kind: Int, frame: Int): PixBuf {
+        if (kind == ArtTavern.DOOR_KIND) return ArtTavern.doorBig(frame)
         val big = PixBuf(64, 64)
         for (c in 0..1) big.blit(facade(style, 4, 0, 0), c * 32, 0)
         val k = kind % DOOR_KINDS
@@ -762,6 +765,7 @@ object ArtHouse {
         }
         if (edge == 1) { b.rect(0, 0, 3, 64, h(0xFF3A2410)); b.rect(2, 7, 1, 38, shadeCol(ia, -0.3f)) }
         if (edge == 2) { b.rect(29, 0, 3, 64, h(0xFF3A2410)); b.rect(29, 7, 1, 38, shadeCol(ia, -0.3f)) }
+        if (style == ArtTavern.STYLE) ArtTavern.backDecor(b, kind)
         return b
     }
 
@@ -875,7 +879,7 @@ object ArtHouse {
                 b.set(x, y, col)
             }
         }
-        if (style == 2) {
+        if (style == 2 || style == 6) {
             for (k in 0 until 70) {
                 val mx = 6 + rn.nextInt(bw - 12)
                 val my = yR + 4 + rn.nextInt(hgt - yR - 10)
@@ -898,7 +902,7 @@ object ArtHouse {
         val dy0 = yR + 22
         val pl = PL[style]
         val bm = BM[style]
-        val gabled = style == 0 || style == 2 || style == 3 || style == 5
+        val gabled = style == 0 || style == 2 || style == 3 || style == 5 || style == 6
         for (fx in dormers(vr)) {
             val dcx = (bw * fx).toInt()
             if (gabled) {
@@ -944,6 +948,7 @@ object ArtHouse {
             b.rect(chx - 2, ct - 3, cw + 4, 1, shadeCol(st, 0.1f))
             b.rect(chx + 2, ct - 2, cw - 4, 2, h(0xFF1A1210))
         }
+        if (style == ArtTavern.STYLE) ArtTavern.roofExtras(b, bw, yR)
         b.outline(h(0xFF2A1A0E))
         return b
     }

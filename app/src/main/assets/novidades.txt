@@ -1,3 +1,12 @@
+#id 2026-10-12-c
+#titulo A Taverna Caneca Dourada refeita do zero!
+- Fachada em enxaimel: vigas escuras em cruz, reboco quente, andar de cima em balanço, base de pedra com musgo
+- Porta ogival gigante de carvalho com tiras de ferro em flor-de-lis, olho-mágico com grade, aldrava de leão, chave de arco dourada e degraus de pedra
+- Toldo de telhas sobre a porta, lampião de ferro aceso e placa de caneca dourada pendurada por correntes
+- Janelas de vidro em losangos com venezianas vermelhas e jardineira de lúpulo; barris empilhados com videira
+- Telhado novo com biruta em forma de caneca e bandeirolas coloridas no beiral
+- Interior: lareira central, balcão com bancos, mesas dos dois lados, tapete vermelho, troféu de javali e guirlandas de lúpulo
+
 #id 2026-10-12-b
 #titulo Portas novas, paredes novas e câmera corrigida
 - Cada casa tem a sua porta: portal arqueado do mago, portão de ferro da ferraria, porta azul da casa de família, porta com toldo da taverna, porta redonda do alquimista e porta rústica do chalé

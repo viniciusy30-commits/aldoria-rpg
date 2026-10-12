@@ -1,5 +1,5 @@
 import io, base64
-import facade as F, door as D, roof as R, interior as I
+import facade as F, door as D, roof as R, interior as I, tav as T
 
 assets={}
 def put(k,cv):
@@ -8,9 +8,9 @@ def put(k,cv):
 for kind in (0,1,2,3):
     for e in (0,1,2):
         for fr in ((0,1) if kind==2 else (0,)):
-            put(f"f{kind}{e}{fr}",F.facade(kind,e,fr))
-for f in range(5): put(f"d{f}",D.door(f))
-put("roof",R.roof())
+            put(f"f{kind}{e}{fr}",T.facade(kind,e,fr))
+for f in range(5): put(f"d{f}",T.door(f))
+put("roof",T.roof())
 for kind in (0,1,2,3):
     for e in (0,1,2):
         for fr in ((0,1) if kind==2 else (0,)):

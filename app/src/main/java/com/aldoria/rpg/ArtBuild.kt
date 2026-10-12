@@ -382,6 +382,7 @@ object ArtBuild {
 
     /** Cerca: [mask] = bit 0 norte, 1 leste, 2 sul, 3 oeste (vizinhos que também são cerca/poste). */
     fun fence(mask: Int): PixBuf {
+        ArtPack.get("fe${mask and 15}", 32, 32)?.let { return it }
         val b = PixBuf(32, 32)
         val wood = h(0xFFB8844A)
         val dk = h(0xFF6B4423)

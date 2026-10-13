@@ -17,6 +17,7 @@ object ArtNature {
     // ------------------------------------------------------------------ árvores
 
     fun oak(v: Int): PixBuf {
+        ArtPack.get("oak${v % 3}", 32, 48)?.let { return it }
         val b = PixBuf(32, 48)
         val rn = java.util.Random(2000L + v * 31L)
         val leaf = intArrayOf(h(0xFF3C8A34), h(0xFF4A9A3A), h(0xFF357F2E))[v % 3]
@@ -70,6 +71,7 @@ object ArtNature {
     }
 
     fun pine(v: Int): PixBuf {
+        ArtPack.get("pine${v % 2}", 32, 48)?.let { return it }
         val b = PixBuf(32, 48)
         val dark = if (v == 0) h(0xFF2E6B3A) else h(0xFF2F6A55)
         val bark = h(0xFF5A3A1E)
@@ -140,6 +142,7 @@ object ArtNature {
     // ------------------------------------------------------------------ arbustos
 
     fun bush(v: Int, flowers: Boolean): PixBuf {
+        ArtPack.get("bu${v and 3}${if (flowers) 1 else 0}", 32, 32)?.let { return it }
         val b = PixBuf(32, 32)
         val rn = java.util.Random(2700L + v * 9L + (if (flowers) 100L else 0L))
         val tones = intArrayOf(h(0xFF3F8F38), h(0xFF4A9A3A), h(0xFF37822F), h(0xFF449438))
@@ -182,6 +185,7 @@ object ArtNature {
     // ------------------------------------------------------------------ pedras, troncos
 
     fun rock(v: Int): PixBuf {
+        ArtPack.get("rock${v % 3}", 32, 32)?.let { return it }
         val b = PixBuf(32, 32)
         val rn = java.util.Random(2900L + v * 13L)
         val base = h(0xFF8E8E98)

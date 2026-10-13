@@ -9,10 +9,12 @@ object Art {
         val s = size / 32
         val cache = HashMap<String, Bitmap>()
         return Array(Gd.COUNT) { g ->
-            Array(8) { v ->
+            Array(63) { v ->
                 val n = when (g) {
                     Gd.GRASS -> 8
                     Gd.CARPET, Gd.BRIDGE -> 1
+                    Gd.WOOD -> 8
+                    Gd.RUG -> 63
                     else -> 4
                 }
                 val vv = v % n
@@ -25,8 +27,9 @@ object Art {
                         Gd.STONE -> ArtGround.stone(vv)
                         Gd.SHALLOW -> ArtGround.water(vv, true)
                         Gd.WATER -> ArtGround.water(vv, false)
-                        Gd.WOOD -> ArtGround.wood(vv)
+                        Gd.WOOD -> if (vv >= 4) ArtTavern.floor(vv - 4) else ArtGround.wood(vv)
                         Gd.CARPET -> ArtGround.carpet()
+                        Gd.RUG -> ArtHouse.rug(vv)
                         else -> ArtGround.bridge()
                     }
                     pb.toBitmap(s)
@@ -67,8 +70,6 @@ object Art {
             out[Ob.WALL][8 + combo] = ArtBuild.wall(2, hasN, hasS, 0).toBitmap(s)
             out[Ob.WALL][12 + combo] = ArtBuild.wall(2, hasN, hasS, 1).toBitmap(s)
         }
-        out[Ob.DOOR][0] = ArtBuild.door(false).toBitmap(s)
-        out[Ob.DOOR][1] = ArtBuild.door(true).toBitmap(s)
         for (f in 0 until 4) out[Ob.FOUNTAIN][f] = ArtBuild.fountain(f).toBitmap(s)
         out[Ob.STATUE][0] = ArtBuild.statue().toBitmap(s)
         out[Ob.LAMP][0] = ArtBuild.lamp().toBitmap(s)
@@ -95,6 +96,16 @@ object Art {
             out[Ob.COUNTER][v] = ArtFurn.counter(v).toBitmap(s)
         }
         out[Ob.CHEST][0] = ArtFurn.chest().toBitmap(s)
+        // variantes da Taverna v3
+        out[Ob.TABLE][3] = ArtTavern.table(0, 0).toBitmap(s)
+        out[Ob.TABLE][4] = ArtTavern.table(1, 0).toBitmap(s)
+        out[Ob.TABLE][5] = ArtTavern.table(0, 1).toBitmap(s)
+        out[Ob.TABLE][6] = ArtTavern.table(1, 1).toBitmap(s)
+        out[Ob.CHAIR][1] = ArtTavern.stool().toBitmap(s)
+        for (v in 0 until 6) out[Ob.COUNTER][2 + v] = ArtTavern.counter(v).toBitmap(s)
+        for (v in 0 until 3) out[Ob.SHELFP][3 + v] = ArtTavern.shelf(v).toBitmap(s)
+        for (v in 0 until 2) out[Ob.BARREL][3 + v] = ArtTavern.casks(v).toBitmap(s)
+        for (side in 0 until 2) for (fr in 0 until 2) out[Ob.FIRE][2 + side * 2 + fr] = ArtTavern.hearth(side, fr).toBitmap(s)
         return out
     }
 

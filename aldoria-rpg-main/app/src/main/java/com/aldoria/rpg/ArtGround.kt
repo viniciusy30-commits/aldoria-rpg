@@ -11,6 +11,7 @@ object ArtGround {
     }
 
     fun grass(v: Int): PixBuf {
+        ArtPack.get("g${v and 7}", 32, 32)?.let { return it }
         val b = PixBuf(32, 32)
         val tones = intArrayOf(h(0xFF4E9C36), h(0xFF58A83D), h(0xFF47922F), h(0xFF53A13A))
         val base = tones[v and 3]
@@ -61,6 +62,7 @@ object ArtGround {
     }
 
     fun dirt(v: Int): PixBuf {
+        ArtPack.get("dt${v and 3}", 32, 32)?.let { return it }
         val b = PixBuf(32, 32)
         val tones = intArrayOf(h(0xFFA37B4F), h(0xFFA97F52), h(0xFF9A7249), h(0xFFA67D50))
         val base = tones[v and 3]
@@ -94,6 +96,7 @@ object ArtGround {
     }
 
     fun sand(v: Int): PixBuf {
+        ArtPack.get("sd${v and 3}", 32, 32)?.let { return it }
         val b = PixBuf(32, 32)
         val tones = intArrayOf(h(0xFFE6D08F), h(0xFFE9D496), h(0xFFE2CB88), h(0xFFE7D091))
         val base = tones[v and 3]
@@ -121,6 +124,7 @@ object ArtGround {
 
     /** Pedras arredondadas de calçada (diagrama de Voronoi sem emendas). */
     fun stone(v: Int): PixBuf {
+        ArtPack.get("st${v and 3}", 32, 32)?.let { return it }
         val b = PixBuf(32, 32)
         val rn = java.util.Random(1000L + v * 17L)
         val n = 16
@@ -268,6 +272,7 @@ object ArtGround {
 
     /** Água animada: 4 quadros que se repetem sem emenda. */
     fun water(frame: Int, shallow: Boolean): PixBuf {
+        ArtPack.get((if (shallow) "ws" else "wa") + (frame and 3), 32, 32)?.let { return it }
         val b = PixBuf(32, 32)
         val deep = if (shallow) h(0xFF4B9ADC) else h(0xFF2461C2)
         val mid = if (shallow) h(0xFF5BA9E8) else h(0xFF2D70D4)

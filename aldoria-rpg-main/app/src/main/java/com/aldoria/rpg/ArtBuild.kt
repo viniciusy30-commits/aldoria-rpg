@@ -6,28 +6,6 @@ object ArtBuild {
     private val PLASTER = h(0xFFE9DEC4)
     private val BEAM = h(0xFF5A3A22)
 
-    private fun roof(b: PixBuf) {
-        val tones = intArrayOf(h(0xFFB5482F), h(0xFFC2523A), h(0xFFA93F29), h(0xFFBC4B32))
-        for (r in 0 until 3) {
-            val y = r * 3
-            val off = if (r % 2 == 0) 0 else 4
-            var sx = off - 8
-            var idx = r
-            while (sx < 32) {
-                val base = tones[idx and 3]
-                b.rect(sx, y, 8, 3, base)
-                b.rect(sx, y, 8, 1, shadeCol(base, 0.18f))
-                b.rect(sx, y + 2, 8, 1, shadeCol(base, -0.22f))
-                b.rect(sx, y, 1, 3, shadeCol(base, -0.3f))
-                b.set(sx + 3, y + 1, shadeCol(base, 0.1f))
-                sx += 8
-                idx++
-            }
-        }
-        b.rect(0, 9, 32, 1, h(0xFF7A2F1E))
-        b.rect(0, 10, 32, 1, h(0xFFC9B79A))
-    }
-
     private fun foundation(b: PixBuf, y0: Int) {
         val st = h(0xFF8E8E98)
         val mortar = h(0xFF5A5A66)
@@ -50,9 +28,8 @@ object ArtBuild {
         b.rect(0, 31, 32, 1, h(0xFF3A3A46))
     }
 
-    private fun windowOn(b: PixBuf, wy: Int) {
+    private fun windowOn(b: PixBuf, wy: Int, shutter: Int = h(0xFF3F7A66)) {
         val frame = h(0xFF4A2F18)
-        val shutter = h(0xFF3F7A66)
         b.rect(4, wy, 3, 11, shutter)
         b.rect(25, wy, 3, 11, shutter)
         for (k in 0 until 4) {
@@ -107,11 +84,7 @@ object ArtBuild {
     fun wall(kind: Int, hasN: Boolean, hasS: Boolean, frame: Int): PixBuf {
         val b = PixBuf(32, 32)
         val rn = java.util.Random(4200L)
-        var p0 = 0
-        if (!hasN) {
-            roof(b)
-            p0 = 11
-        }
+        val p0 = 0
         val bottom = if (hasS) 32 else 26
         b.rect(0, p0, 32, bottom - p0, PLASTER)
         for (i in 0 until 80) {
@@ -143,35 +116,6 @@ object ArtBuild {
         if (!hasS) foundation(b, 26)
         return b
     }
-
-    fun door(hasN: Boolean): PixBuf {
-        val b = wall(0, hasN, false, 0)
-        val p0 = if (hasN) 0 else 11
-        val top = p0 + 3
-        val stone = h(0xFF9B9BA6)
-        b.rect(6, top, 20, 32 - top, stone)
-        b.rect(6, top, 20, 1, shadeCol(stone, 0.2f))
-        b.rect(8, top + 2, 16, 30 - top, h(0xFF7A4B25))
-        val dk = h(0xFF5E3A1C)
-        for (k in 0 until 4) {
-            b.rect(8 + k * 4 + 3, top + 2, 1, 30 - top, dk)
-            b.rect(8 + k * 4, top + 2, 1, 30 - top, shadeCol(h(0xFF7A4B25), 0.12f))
-        }
-        b.rect(8, top + 2, 16, 1, h(0xFF3A2410))
-        val iron = h(0xFF2A2A30)
-        b.rect(8, top + 6, 16, 2, iron)
-        b.rect(8, top + 15, 16, 2, iron)
-        b.set(9, top + 6, h(0xFF6A6A74))
-        b.set(22, top + 6, h(0xFF6A6A74))
-        b.set(9, top + 15, h(0xFF6A6A74))
-        b.set(22, top + 15, h(0xFF6A6A74))
-        b.ellipse(20.5f, (top + 12).toFloat(), 1.7f, 1.7f, h(0xFFF2C94C), true)
-        b.rect(4, 30, 24, 2, h(0xFFB8B8C0))
-        b.rect(4, 30, 24, 1, h(0xFFD6D6DE))
-        return b
-    }
-
-    // ------------------------------------------------------------------ praça
 
     fun fountain(frame: Int): PixBuf {
         val b = PixBuf(32, 40)
@@ -438,6 +382,7 @@ object ArtBuild {
 
     /** Cerca: [mask] = bit 0 norte, 1 leste, 2 sul, 3 oeste (vizinhos que também são cerca/poste). */
     fun fence(mask: Int): PixBuf {
+        ArtPack.get("fe${mask and 15}", 32, 32)?.let { return it }
         val b = PixBuf(32, 32)
         val wood = h(0xFFB8844A)
         val dk = h(0xFF6B4423)

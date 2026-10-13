@@ -1,3 +1,34 @@
+#id 2026-10-12-d
+#titulo Taverna refeita do zero: agora faz sentido!
+- Fachada nova desenhada como uma peça só e bem mais alta: enxaimel no andar de cima com sacada, placa de caneca e estandarte; térreo de pedra com 4 janelas iguais, 2 lampiões e a porta em arco no centro
+- Porta de verdade: ao entrar, a fachada vira um murinho baixo com o vão livre, então o boneco não atravessa mais a porta nem fica sobre ela
+- Telhado ajustado à fachada, sem frestas
+- Interior novo: lareira grande de pedra com fogo animado, prateleiras de canecas, garrafas e queijos, barris em cavalete, balcão de bar com torneiras, tapete do portão ao balcão e duas mesas compridas com banquetas
+- Parede de fundo contínua com janelas, tapeçarias, tochas animadas e escudo com espadas sobre a lareira
+
+#id 2026-10-12-c
+#titulo Taverna Caneca Dourada refeita em pixel art!
+- Fachada nova de 3 andares de altura: enxaimel, janelas de vidro em losangos, sacada de ferro e bandeirolas
+- Porta ogival gigante com ferragens, aldrava de leão, toldo de telhas, lampião aceso e placa de caneca
+- Telhado de telhas com lucarnas, chaminés de pedra e biruta em forma de caneca
+- Interior novo: piso de carvalho, balcão de bar, mesas compridas com canecas, banquinhos, tonéis e troféu de javali
+
+#id 2026-10-12-b
+#titulo Portas novas, paredes novas e câmera corrigida
+- Cada casa tem a sua porta: portal arqueado do mago, portão de ferro da ferraria, porta azul da casa de família, porta com toldo da taverna, porta redonda do alquimista e porta rústica do chalé
+- Portas de tamanhos diferentes, com detalhes: dobradiças, maçanetas, vitrais, ferradura, hera e vasinho de flores
+- Paredes de fora no estilo medieval: base de pedra, vigas e postes de madeira, reboco com textura, seteiras de pedra, hera subindo e janelas em arco com venezianas, cortinas e jardineira
+- Corrigido: a tela ficava preta ao chegar perto das casas do norte (ferraria e torre do mago); e a câmera não mostra mais o vazio fora do mapa
+
+#id 2026-10-11-b
+#titulo A Vila de Aldoria cresceu!
+- Vila bem maior, com ruas, praça central com estátua, duas fontes, feira, poço, parque e cerca com portões
+- 6 casas diferentes: torre-casarão do mago, ferraria, casa de família, taverna larga, alquimista e chalé
+- Fachadas novas de dois andares: janelas em arco com cortinas e floreiras, lanternas, hera, barris e base de pedra
+- Porta dupla gigante em arco: abre quando você chega perto e você atravessa de verdade (sem ficar por cima dela)
+- Telhados com telhas, janelas de sótão e chaminés com fumaça; entre na casa e o telhado some devagar
+- Interiores refeitos: papel de parede, lambri, janelas com cortinas, quadros, arandelas, tapetes com franja e móveis organizados
+
 #id 2026-10-09-d
 #titulo Magias com animações insanas!
 - Bola de fogo viaja até o alvo e explode com onda de choque, brasas, fumaça e chão chamuscado

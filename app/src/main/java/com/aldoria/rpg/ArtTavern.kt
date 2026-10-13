@@ -35,19 +35,19 @@ object ArtTavern {
     }
 
     /** Coluna [rel] (0..14) da fachada vista de fora, 32x192. */
-    fun facadeCol(rel: Int): PixBuf = load("fc${rel.coerceIn(0, 14)}", 32, 192)
+    fun facadeCol(rel: Int): PixBuf = load("fc${rel.coerceIn(0, 18)}", 32, 192)
 
     /** Coluna [rel] do murinho baixo que substitui a fachada quando você está dentro, 32x192 (quase tudo transparente). */
-    fun facadeCut(rel: Int): PixBuf = load("cc${rel.coerceIn(0, 14)}", 32, 192)
+    fun facadeCut(rel: Int): PixBuf = load("cc${rel.coerceIn(0, 18)}", 32, 192)
 
     /** Portal ogival gigante de 3 quadrados (colunas 6, 7 e 8), 96x192. frame 0 fechada ... 4 aberta. */
     fun doorBig(frame: Int): PixBuf = load("d${frame.coerceIn(0, 4)}", 96, 192)
 
-    /** Telhado da taverna (15 colunas): 502x190. */
-    fun roof(): PixBuf = load("roof", 502, 190)
+    /** Telhado da taverna (19 colunas): 502x190. */
+    fun roof(): PixBuf = load("roof", 630, 222)
 
     /** Parede de fundo (andar de cima) vista de dentro, coluna [rel] (0..14), 32x96. frame 0/1 anima as tochas. */
-    fun backCol(rel: Int, frame: Int): PixBuf = load("bk${rel.coerceIn(0, 14)}${frame and 1}", 32, 96)
+    fun backCol(rel: Int, frame: Int): PixBuf = load("bk${rel.coerceIn(0, 18)}${frame and 1}", 32, 96)
 
     // compatibilidade com ArtHouse (não usados pelo desenho da taverna)
     fun facade(kind: Int, edge: Int, frame: Int): PixBuf = facadeCol(0)

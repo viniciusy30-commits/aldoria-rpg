@@ -2,7 +2,7 @@
 from lib import *
 from ext3 import crop
 
-RW,RH=502,190
+RW,RH=630,222
 def roof():
     c=Cv(RW,RH)
     x0,x1=10,RW-10
@@ -31,7 +31,7 @@ def roof():
         for x in range(2,x0+2):
             c.set(x,y,WD[2] if x>3 else WD[0]); c.set(RW-1-x,y,WD[2] if x>3 else WD[0])
     # empena central com janela redonda e cata-vento
-    gx=251; gw=70; gtop=88
+    gx=RW//2; gw=100; gtop=112
     for y in range(gtop,RH-8):
         half=int((y-gtop)*gw/(RH-8-gtop)*0.9)
         for x in range(gx-half,gx+half+1):
@@ -44,40 +44,39 @@ def roof():
         yy=gtop+int(k*(RH-8-gtop)/gw/0.9) 
     # vigas da empena
     c.rect(gx-1,gtop-6,3,RH-8-gtop+6,WD[1])
-    c.rect(gx-gw//2,150,gw,3,WD[2]); c.rect(gx-gw//2,150,gw,1,WD[3])
-    c.ell(gx,128,11,11,WD[0]); c.ell(gx,128,9,9,WD[3]); c.ell(gx,128,7,7,GLASS[2]); c.ell(gx,127,4,4,GLASS[3])
-    c.rect(gx-7,128,15,1,WD[1]); c.rect(gx,121,1,15,WD[1])
+    c.rect(gx-gw//2,182,gw,3,WD[2]); c.rect(gx-gw//2,182,gw,1,WD[3])
+    c.ell(gx,156,12,12,WD[0]); c.ell(gx,156,10,10,WD[3]); c.ell(gx,156,8,8,GLASS[2]); c.ell(gx,155,4,4,GLASS[3])
+    c.rect(gx-8,156,17,1,WD[1]); c.rect(gx,148,1,17,WD[1])
     # cata-vento em forma de caneca
     c.rect(gx,gtop-26,1,22,IRON[1]); c.rect(gx-3,gtop-14,7,1,IRON[2])
     c.rect(gx+1,gtop-24,10,9,GOLD[2]); c.rect(gx+1,gtop-24,10,2,GOLD[3]); c.rect(gx+11,gtop-22,3,5,GOLD[1]); c.rect(gx+1,gtop-16,10,1,GOLD[0])
     c.ell(gx,gtop-27,2,2,GOLD[3])
     # lucarnas
-    for dx in (62,RW-62):
-        c.poly([(dx-18,150),(dx+18,150),(dx,118)],RT[3]); c.line(dx-18,150,dx,118,RT[0]); c.line(dx+18,150,dx,118,RT[0])
-        c.rect(dx-14,150,28,22,PL[2]); c.rect(dx-14,150,28,1,WD[0])
-        c.rect(dx-10,153,20,15,GLASS[2]); c.rect(dx-10,153,20,3,GLASS[3]); c.rect(dx-1,153,2,15,WD[1]); c.rect(dx-10,160,20,2,WD[1])
-        c.rect(dx-12,151,2,19,WD[2]); c.rect(dx+10,151,2,19,WD[2])
-        c.rect(dx-12,172,24,4,WD[0])
+    for dx in (60,202,RW-202,RW-60):
+        c.poly([(dx-18,182),(dx+18,182),(dx,150)],RT[3]); c.line(dx-18,182,dx,150,RT[0]); c.line(dx+18,182,dx,150,RT[0])
+        c.rect(dx-14,182,28,22,PL[2]); c.rect(dx-14,182,28,1,WD[0])
+        c.rect(dx-10,185,20,15,GLASS[2]); c.rect(dx-10,185,20,3,GLASS[3]); c.rect(dx-1,185,2,15,WD[1]); c.rect(dx-10,192,20,2,WD[1])
+        c.rect(dx-12,183,2,19,WD[2]); c.rect(dx+10,183,2,19,WD[2])
+        c.rect(dx-12,204,24,4,WD[0])
     # chamines de pedra (fumaca nasce em y=96)
-    for cx_ in (118,408):
-        c.rect(cx_-12,90,24,70,MT)
-        for yy in range(92,160,6):
+    for cx_ in (145,511):
+        c.rect(cx_-12,110,24,80,MT)
+        for yy in range(112,190,6):
             for k,xx in enumerate(range(cx_-11,cx_+11,8)):
                 xo=xx+(4 if (yy//6)%2 else 0)
                 col=ST[2] if (k+yy//6)%2 else ST[1]
                 c.rect(max(cx_-11,xo),yy,min(7,cx_+11-max(cx_-11,xo)),5,col); c.rect(max(cx_-11,xo),yy,min(7,cx_+11-max(cx_-11,xo)),1,ST[3])
-        c.rect(cx_-12,90,24,1,MT)
-        c.rect(cx_-14,86,28,5,ST[3]); c.rect(cx_-14,86,28,1,ST[4]); c.rect(cx_-14,90,28,1,ST[0])
-        c.rect(cx_-8,84,16,2,ST[0]); c.rect(cx_-6,85,12,1,(20,12,10,255))
-        c.rect(cx_-12,90,2,70,ST[3]); c.rect(cx_+10,90,2,70,ST[0])
+        c.rect(cx_-14,106,28,5,ST[3]); c.rect(cx_-14,106,28,1,ST[4]); c.rect(cx_-14,110,28,1,ST[0])
+        c.rect(cx_-8,104,16,2,ST[0]); c.rect(cx_-6,105,12,1,(20,12,10,255))
+        c.rect(cx_-12,110,2,80,ST[3]); c.rect(cx_+10,110,2,80,ST[0])
     # bandeirinhas da cumeeira
     for xx in range(30,RW-30,26):
-        if abs(xx-251)<60: continue
+        if abs(xx-RW//2)<80: continue
         col=[RED[2],TEAL[2],GOLD[2],C('c060d0')][(xx//26)%4]
         c.poly([(xx,9),(xx+9,9),(xx+4,19)],col)
     return c
 
-BW=480; BH=96
+BW=608; BH=96
 def backstrip(fr):
     c=Cv(BW,BH)
     # viga do teto
@@ -100,11 +99,11 @@ def backstrip(fr):
             c.set(x,y,col)
     c.rect(0,64,BW,3,WD[4]); c.rect(0,66,BW,1,WD[0])
     # postes a cada 5 colunas
-    for rel in (0,5,10,14):
-        px=rel*32+(0 if rel==0 else (24 if rel==14 else 14)); beam(c,px,12,8,54,seed=rel)
+    for rel in (0,4,8,10,14,18):
+        px=rel*32+(0 if rel==0 else (24 if rel==18 else 14)); beam(c,px,12,8,54,seed=rel)
     def X(rel): return rel*32+16
     # janelas altas em arco (c3 e c11) com luar azulado
-    for rel in (3,11):
+    for rel in (3,15):
         cx_=X(rel); 
         c.rect(cx_-14,22,28,42,WD[0]); c.rect(cx_-13,23,26,40,ST[3])
         for yy in range(26,62):
@@ -118,7 +117,7 @@ def backstrip(fr):
             for yy in range(23,63,3): c.rect(sx+1,yy,4,1,TEAL[2])
             c.rect(sx,22,1,42,TEAL[0]); c.rect(sx+5,22,1,42,TEAL[0])
     # portas dos quartos (c5 e c9) com placa
-    for rel in (5,9):
+    for rel in (6,12):
         cx_=X(rel)
         c.rect(cx_-12,24,24,42,WD[0]); c.rect(cx_-11,25,22,41,WD[2])
         for k in range(4): c.rect(cx_-10+k*5,26,1,40,WD[1])
@@ -127,13 +126,13 @@ def backstrip(fr):
         c.rect(cx_-5,16,10,6,GOLD[1]); c.rect(cx_-5,16,10,1,GOLD[3]); c.rect(cx_-3,18,6,2,WD[0])   # plaquinha do quarto
         c.rect(cx_-14,22,28,3,WD[3]); 
     # estandarte central (c7)
-    cx_=X(7)
+    cx_=X(9)
     c.rect(cx_-12,16,24,2,IRON[1]); c.rect(cx_-9,18,18,40,RED[1]); c.rect(cx_-9,18,18,3,RED[0])
     for k in range(9): c.rect(cx_-9+k*2,58,2,6-abs(k-4),RED[1] if k%2 else RED[0])
     c.rect(cx_-9,18,2,40,RED[2]); c.rect(cx_+7,18,2,40,RED[0])
     c.rect(cx_-5,28,10,12,GOLD[2]); c.rect(cx_-5,28,10,3,GOLD[3]); c.rect(cx_+5,31,4,6,GOLD[1]); c.rect(cx_-5,38,10,2,GOLD[0])
     # tochas animadas (c1 e c13) 
-    for rel in (1,13):
+    for rel in (1,17):
         cx_=X(rel)
         c.rect(cx_-2,40,5,12,IRON[1]); c.rect(cx_-4,38,9,3,IRON[2]); c.rect(cx_-1,52,3,6,IRON[0])
         f=fr

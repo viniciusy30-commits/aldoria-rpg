@@ -1,3 +1,10 @@
+#id 2026-10-13-b
+#titulo Taverna gigante com placa e galeria!
+- Taverna bem maior (19 x 12 blocos): salão amplo com lareira central, balcão comprido, quatro mesas compridas e corredor até as escadas
+- Fachada nova com placa de madeira "Caneca Dourada" e emblema entalhado ao lado do portal, estandartes, sacada e 6 janelas no andar de cima
+- Galeria no andar de cima com camas, baús e portas de quartos
+- Alquimista e chalé mudaram de lugar para abrir espaço
+
 #id 2026-10-13-a
 #titulo Taverna Caneca Dourada reconstruída do zero, com 2 andares!
 - Fachada nova e bem maior: andar de cima em enxaimel com sacada de ferro, portas de vidro, placa de caneca, estandarte e bandeirolas; térreo de pedra com janelas em arco, grades, jardineiras e lampiões

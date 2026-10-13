@@ -13,17 +13,17 @@ def put(k,cv):
     b=io.BytesIO(); cv.im.save(b,'PNG',optimize=True); assets[k]=base64.b64encode(b.getvalue()).decode()
 # exterior novo (15 colunas)
 fac=E.facade_full()
-for col in range(15): put(f"fc{col}",E.crop(fac,col*32,32))
+for col in range(19): put(f"fc{col}",E.crop(fac,col*32,32))
 
 for fr in range(5):
     im=Cv(E.FW,E.FH); im.blit(fac,0,0); im.blit(E.door_frame(fr),E.DX0,0)
     put(f"d{fr}",E.crop(im,E.DX0,96))          # 96x192: as 3 colunas da porta (fachada completa + portal com folhas)
 cut=E.cut_full()
-for col in range(15): put(f"cc{col}",E.crop(cut,col*32,32))
+for col in range(19): put(f"cc{col}",E.crop(cut,col*32,32))
 put("roof",N.roof())
 for fr in (0,1):
     bs=N.backstrip(fr)
-    for rel in range(15): put(f"bk{rel}{fr}",E.crop(bs,rel*32,32))
+    for rel in range(19): put(f"bk{rel}{fr}",E.crop(bs,rel*32,32))
 for v in range(4): put(f"fl{v}",N.floor_hall(v)); put(f"lf{v}",N.floor_loft(v))
 for k in range(4): put(f"rl{k}",N.rail(k))
 for s in (0,1):

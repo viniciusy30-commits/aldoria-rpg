@@ -456,8 +456,8 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
                         tbm = ArtTavern.backCol(rel, tf).toBitmap(s)
                         tileCache[tkey] = tbm
                     }
-                    if ((rel == 1 || rel == 13) && inLit(i)) addLight(sx0 + 16f * s, sy0 - 30f * s, tile * 2.4f, 0)
-                    if ((rel == 3 || rel == 11) && inLit(i)) addLight(sx0 + 16f * s, sy0 - 36f * s, tile * 1.8f, 2)
+                    if ((rel == 1 || rel == 17) && inLit(i)) addLight(sx0 + 16f * s, sy0 - 30f * s, tile * 2.4f, 0)
+                    if ((rel == 3 || rel == 15) && inLit(i)) addLight(sx0 + 16f * s, sy0 - 36f * s, tile * 1.8f, 2)
                     bp.alpha = (open * 255f).toInt().coerceIn(0, 255)
                     c.drawBitmap(tbm!!, sx0, sy0 - (tbm.height - tile), bp)
                     bp.alpha = 255
@@ -560,9 +560,8 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
             cb = ArtTavern.facadeCut(rel).toBitmap(s)
             tileCache[ckey] = cb
         }
-        if (!door && (rel == 1 || rel == 3 || rel == 11 || rel == 13)) addLight(sx0 + 16f * s, sy0 - 25f * s, tile * 1.5f, 2)
-        if (!door && rel == 5) addLight(sx0 + 6f * s, sy0 - 50f * s, tile * 2.0f, 0)
-        if (!door && rel == 9) addLight(sx0 + 26f * s, sy0 - 50f * s, tile * 2.0f, 0)
+        if (!door && (rel == 1 || rel == 3 || rel == 6 || rel == 12 || rel == 15 || rel == 17)) addLight(sx0 + 16f * s, sy0 - 25f * s, tile * 1.5f, 2)
+        if (!door && (rel == 5 || rel == 13)) addLight(sx0 + 16f * s, sy0 - 60f * s, tile * 2.2f, 0)
         if (door && frame > 0 && part == 1) addLight(sx0 + 16f * s, sy0 - 4f * s, tile * (1.3f + 0.3f * frame), 0)
         val a1 = (1f - open)
         if (a1 > 0.02f && bm != null) {

@@ -1,8 +1,10 @@
 # Taverna v4 - exterior: fachada 480x192 (15 colunas), porta 96x192, corte baixo e telhado
 from lib import *
 
-FW,FH=480,192
-DX0,DX1=192,288           # vao da porta (3 quadrados)
+FW,FH=608,192
+UPW=[46,120,194]+[608-46,608-120,608-194]     # centros das janelas do andar de cima
+GW=[35,109,477,551]                              # x das janelas do terreo
+DX0,DX1=256,352           # vao da porta (3 quadrados)
 ARCH_TOP=100; SPRING=132  # topo e inicio do arco
 CXD=(DX0+DX1)/2
 def in_arch(x,y,pad=0):
@@ -21,16 +23,15 @@ def facade_base():
     beam(c,0,0,FW,8,seed=2)
     for x in range(0,FW,24): c.rect(x+10,2,2,2,WD[3])
     # postes e travessas
-    for px in (0,90,186,288,384,472): beam(c,px,8,8,64,seed=px)
+    for px in (0,84,156,232,368,444,516,FW-8): beam(c,px,8,8,64,seed=px)
     beam(c,0,38,FW,4,seed=4)                       # travessa media
-    for (a,b) in ((8,90),(98,186),(296,384),(392,472)):
+    for (a,b) in ((8,84),(92,156),(164,232),(376,444),(452,516),(524,FW-8)):
         # cruz de Sao Andre nos paineis baixos (y 42..70)
         for k in range(0,b-a-8):
             yy=42+int(k*(70-42)/max(1,(b-a-8)))
             c.set(a+4+k,yy,WD[1]); c.set(a+4+k,yy+1,WD[2])
     # janelas do andar de cima
-    for wx in (36,108): window_rect(c,wx,16,22,20,seed=wx)
-    for wx in (356,418): window_rect(c,wx,16,22,20,seed=wx)
+    for cxw in UPW: window_rect(c,cxw-11,16,22,20,seed=cxw)
     # janelas pequenas nos paineis baixos (frestas/postigos)
     # --- viga do jetty (balanco) com mísulas
     beam(c,0,72,FW,8,seed=9)
@@ -48,7 +49,7 @@ def facade_base():
         for k,yy in enumerate(range(80,184,13)):
             c.rect(qx,yy,14,12,sh(ST[3],0.0 if k%2 else -0.08)); c.rect(qx,yy,14,1,ST[4]); c.rect(qx,yy+11,14,1,ST[0]); c.rect(qx,yy,1,12,ST[4]); c.rect(qx+13,yy,1,12,ST[0])
     # janelas de pedra em arco com grade e luz
-    for wx in (36,108,356,418):
+    for wx in GW:
         x0=wx-4; w=30; top=110; bot=156
         c.rect(x0-3,top-3,w+6,bot-top+8,ST[0]); c.rect(x0-2,top-2,w+4,bot-top+6,ST[3])
         for yy in range(top,bot):
@@ -112,10 +113,6 @@ def facade_full():
     # degraus de pedra diante da porta
     for k,(xa,xb,ya) in enumerate(((DX0-18,DX1+18,176),(DX0-10,DX1+10,182))):
         c.rect(xa,ya,xb-xa,5 if k==0 else 6,ST[3]); c.rect(xa,ya,xb-xa,1,ST[4]); c.rect(xa,ya+(4 if k==0 else 5),xb-xa,1,ST[0])
-    # lampioes ao lado da porta
-    for lx in (DX0-26,DX1+26): 
-        c.rect(lx-1,98,2,3,IRON[1]); c.rect(lx-1,98,8 if lx<CXD else -8,2,IRON[1]) if False else None
-        lantern(c,lx,100)
     # SACADA do andar de cima sobre a porta + portas-janela envidracadas
     bx0,bx1=DX0-18,DX1+18
     c.rect(bx0+8,16,bx1-bx0-16,56,(30,18,12,255))
@@ -143,25 +140,46 @@ def facade_full():
         c.ell(xx+2.5,57,2.5,2.5,IRON[2]); c.set(xx+2,56,IRON[3])
     # lampioes da sacada
     lantern(c,bx0-2,22); lantern(c,bx1+2,22)
-    # PLACA PENDURADA (caneca dourada) no poste esquerdo central
-    px=136; py=26
-    c.rect(px+36,22,2,30,IRON[1]); c.rect(px+4,22,34,2,IRON[1]); c.rect(px+4,22,34,1,IRON[3])
-    for k in range(6): c.set(px+31+k,24+k//2,IRON[1])   # suporte curvo
-    c.rect(px+8,24,1,5,IRON[1]); c.rect(px+31,24,1,5,IRON[1])
-    c.rect(px+4,29,36,28,WD[0]); c.rect(px+5,30,34,26,WD[3]); c.rect(px+6,31,32,24,WD[2])
-    c.rect(px+5,30,34,1,WD[4]); c.rect(px+5,55,34,1,WD[0])
-    c.rect(px+12,35,14,14,GOLD[2]); c.rect(px+12,35,14,3,GOLD[3]); c.rect(px+26,38,6,8,GOLD[1]); c.rect(px+28,40,2,4,WD[2])
-    c.rect(px+12,48,14,2,GOLD[0]); c.rect(px+14,37,10,3,C('fff8e0'))      # espuma
-    c.set(px+16,38,C('ffffff')); c.set(px+19,38,C('ffffff'))
-    # ESTANDARTE vermelho
-    bx=300
-    c.rect(bx-2,20,26,2,IRON[1]); c.rect(bx+2,22,18,40,RED[1]); c.rect(bx+2,22,18,3,RED[0])
-    for k in range(9): c.rect(bx+2+k*2,62,2,6-abs(k-4)*1,RED[1] if k%2 else RED[0])
-    c.rect(bx+2,22,2,40,RED[2]); c.rect(bx+18,22,2,40,RED[0])
-    c.rect(bx+7,34,8,10,GOLD[2]); c.rect(bx+7,34,8,2,GOLD[3]); c.rect(bx+15,36,3,5,GOLD[1]); c.rect(bx+8,46,6,2,GOLD[0])
+    # PLACAS da taverna penduradas em bracos de ferro dos dois lados do portal
+    def hang(bx,by,w,h,kind):
+        c.rect(bx-6,by-8,w+12,3,IRON[1]); c.rect(bx-6,by-8,w+12,1,IRON[3])
+        for k in range(10): c.rect(bx+w+4-k//2,by-8+k,1,1,IRON[1])        # suporte curvo
+        for cxh in (bx+5,bx+w-5):
+            for yy in range(by-5,by): c.set(cxh,yy,IRON[3] if yy%2 else IRON[1])
+        c.rect(bx-1,by-1,w+2,h+2,WD[0]); c.rect(bx,by,w,h,WD[2])
+        for yy in range(by+1,by+h-1):
+            for xx in range(bx+1,bx+w-1):
+                n=H(xx,yy//3,kind)%9
+                c.set(xx,yy,WD[3] if (yy-by)%7 in (1,2) else (WD[1] if n==0 else WD[2]))
+        c.rect(bx,by,w,1,WD[4]); c.rect(bx,by+h-1,w,1,WD[0]); c.rect(bx,by,1,h,WD[3]); c.rect(bx+w-1,by,1,h,WD[0])
+        for (nx,ny) in ((bx+2,by+2),(bx+w-4,by+2),(bx+2,by+h-4),(bx+w-4,by+h-4)): nail(c,nx,ny)
+        c.rect(bx+3,by+3,w-6,1,GOLD[1]); c.rect(bx+3,by+h-5,w-6,1,GOLD[1])
+    # esquerda: nome da taverna em letras douradas
+    from PIL import ImageDraw, ImageFont
+    hang(158,108,66,50,1)
+    d=ImageDraw.Draw(c.im); d.fontmode="1"
+    try: f=ImageFont.load_default(size=9)
+    except Exception: f=ImageFont.load_default()
+    for (txt,ty) in (("CANECA",112),("DOURADA",126)):
+        tw=d.textlength(txt,font=f); tx=158+(66-tw)/2
+        d.text((tx+1,ty+1),txt,font=f,fill=(40,20,8,255)); d.text((tx,ty),txt,font=f,fill=GOLD[3])
+    # caneca dourada pequena embaixo do nome
+    c.rect(184,141,10,8,GOLD[2]); c.rect(184,141,10,2,GOLD[3]); c.rect(194,143,3,4,GOLD[1]); c.rect(185,148,8,1,GOLD[0])
+    # direita: emblema entalhado (caneca grande + espigas)
+    hang(384,108,66,50,2)
+    c.rect(405,122,16,22,GOLD[2]); c.rect(405,122,16,4,GOLD[3]); c.rect(421,126,6,12,GOLD[1]); c.rect(423,129,2,6,WD[2]); c.rect(405,142,16,2,GOLD[0])
+    c.rect(407,119,12,4,C('fff8e0')); c.set(410,118,C('ffffff')); c.set(415,118,C('ffffff'))
+    for sxx,dirr in ((392,1),(444,-1)):
+        for k in range(7): c.set(sxx+dirr*(k//2),150-k*3,GOLD[1]); c.set(sxx+dirr*(k//2)+dirr,148-k*3,GOLD[2])
+    # ESTANDARTES vermelhos nos cantos do balcao
+    for bx in (212,372):
+        c.rect(bx-2,20,30,2,IRON[1]); c.rect(bx+2,22,22,40,RED[1]); c.rect(bx+2,22,22,3,RED[0])
+        for k in range(11): c.rect(bx+2+k*2,62,2,6-abs(k-5),RED[1] if k%2 else RED[0])
+        c.rect(bx+2,22,2,40,RED[2]); c.rect(bx+22,22,2,40,RED[0])
+        c.rect(bx+8,34,10,12,GOLD[2]); c.rect(bx+8,34,10,3,GOLD[3]); c.rect(bx+18,37,4,6,GOLD[1]); c.rect(bx+9,48,8,2,GOLD[0])
     # bandeirolas penduradas na viga
     for k,xx in enumerate(range(24,FW-20,28)):
-        if DX0-30<xx<DX1+30 or any(w0-12<xx<w0+34 for w0 in (36,108,356,418)): continue
+        if DX0-30<xx<DX1+30 or any(abs(xx+5-cw)<26 for cw in UPW) or 200<xx<400: continue
         col=[RED[2],TEAL[2],GOLD[2],C('c060d0')][k%4]
         c.poly([(xx,42),(xx+10,42),(xx+5,52)],col); c.line(xx,42,xx+10,42,IRON[0])
     # placa menor "QUARTOS" nao tem texto; ferradura da sorte sobre a viga

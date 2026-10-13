@@ -13,7 +13,7 @@ object Art {
                 val n = when (g) {
                     Gd.GRASS -> 8
                     Gd.CARPET, Gd.BRIDGE -> 1
-                    Gd.WOOD -> 8
+                    Gd.WOOD -> 12
                     Gd.RUG -> 63
                     else -> 4
                 }
@@ -27,7 +27,7 @@ object Art {
                         Gd.STONE -> ArtGround.stone(vv)
                         Gd.SHALLOW -> ArtGround.water(vv, true)
                         Gd.WATER -> ArtGround.water(vv, false)
-                        Gd.WOOD -> if (vv >= 4) ArtTavern.floor(vv - 4) else ArtGround.wood(vv)
+                        Gd.WOOD -> if (vv >= 8) ArtTavern.loftFloor(vv - 8) else if (vv >= 4) ArtTavern.floor(vv - 4) else ArtGround.wood(vv)
                         Gd.CARPET -> ArtGround.carpet()
                         Gd.RUG -> ArtHouse.rug(vv)
                         else -> ArtGround.bridge()
@@ -96,12 +96,20 @@ object Art {
             out[Ob.COUNTER][v] = ArtFurn.counter(v).toBitmap(s)
         }
         out[Ob.CHEST][0] = ArtFurn.chest().toBitmap(s)
-        // variantes da Taverna
-        out[Ob.TABLE][3] = ArtTavern.table(0).toBitmap(s)
-        out[Ob.TABLE][4] = ArtTavern.table(1).toBitmap(s)
+        // variantes da Taverna v3
+        out[Ob.TABLE][3] = ArtTavern.table(0, 0).toBitmap(s)
+        out[Ob.TABLE][4] = ArtTavern.table(1, 0).toBitmap(s)
+        out[Ob.TABLE][5] = ArtTavern.table(0, 1).toBitmap(s)
+        out[Ob.TABLE][6] = ArtTavern.table(1, 1).toBitmap(s)
         out[Ob.CHAIR][1] = ArtTavern.stool().toBitmap(s)
-        for (v in 0 until 3) out[Ob.COUNTER][2 + v] = ArtTavern.counter(v).toBitmap(s)
-        out[Ob.BARREL][2] = ArtTavern.cask().toBitmap(s)
+        for (v in 0 until 6) out[Ob.COUNTER][2 + v] = ArtTavern.counter(v).toBitmap(s)
+        for (v in 0 until 3) out[Ob.SHELFP][3 + v] = ArtTavern.shelf(v).toBitmap(s)
+        for (v in 0 until 2) out[Ob.BARREL][3 + v] = ArtTavern.casks(v).toBitmap(s)
+        for (side in 0 until 2) for (fr in 0 until 2) out[Ob.FIRE][2 + side * 2 + fr] = ArtTavern.hearth(side, fr).toBitmap(s)
+        // andar de cima da Taverna v4: balaustrada (SHELFP 6..9), escadas (CHAIR 2..7, pisáveis) e camas (BED 1..2)
+        for (k in 0 until 4) out[Ob.SHELFP][6 + k] = ArtTavern.rail(k).toBitmap(s)
+        for (side in 0 until 2) for (part in 0 until 3) out[Ob.CHAIR][2 + side * 3 + part] = ArtTavern.stairs(side, part).toBitmap(s)
+        for (k in 0 until 2) out[Ob.BED][1 + k] = ArtTavern.bed(k).toBitmap(s)
         return out
     }
 

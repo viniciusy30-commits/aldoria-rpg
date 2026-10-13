@@ -1,7 +1,7 @@
 package com.aldoria.rpg
 
-/** A Taverna "Caneca Dourada": arte pixel art desenhada à mão (ver ArtTavernData).
- *  Fachada de dois andares em enxaimel, porta ogival com sacada, telhado de telhas, piso e móveis próprios. */
+/** A Taverna "Caneca Dourada" v4: fachada de 2 andares com 15 colunas (192 px de altura) fatiada em colunas, portal de 3 quadrados,
+ *  corte baixo da fachada para quando você está dentro, parede de fundo do andar de cima, balaustrada, escadas, camas e móveis. */
 object ArtTavern {
     const val STYLE = 6
     const val DOOR_KIND = 6
@@ -34,29 +34,60 @@ object ArtTavern {
         return res
     }
 
-    /** Coluna da fachada, 32x96 (3 quadrados de altura). kind 0 parede, 1 janelas, 2 lampião, 3 barris/sótão. edge: 1 canto esq., 2 canto dir. */
-    fun facade(kind: Int, edge: Int, frame: Int): PixBuf {
-        val k = if (kind in 0..3) kind else 0
-        val fr = if (k == 2) (frame and 1) else 0
-        return load("f$k$edge$fr", 32, 96)
-    }
+    /** Coluna [rel] (0..14) da fachada vista de fora, 32x192. */
+    fun facadeCol(rel: Int): PixBuf = load("fc${rel.coerceIn(0, 14)}", 32, 192)
 
-    /** Porta ogival dupla com sacada em cima, 64x96. frame 0 fechada ... 4 aberta. */
-    fun doorBig(frame: Int): PixBuf = load("d${frame.coerceIn(0, 4)}", 64, 96)
+    /** Coluna [rel] do murinho baixo que substitui a fachada quando você está dentro, 32x192 (quase tudo transparente). */
+    fun facadeCut(rel: Int): PixBuf = load("cc${rel.coerceIn(0, 14)}", 32, 192)
 
-    /** Telhado da taverna (14x9): 470x222. */
-    fun roof(): PixBuf = load("roof", 470, 222)
+    /** Portal ogival gigante de 3 quadrados (colunas 6, 7 e 8), 96x192. frame 0 fechada ... 4 aberta. */
+    fun doorBig(frame: Int): PixBuf = load("d${frame.coerceIn(0, 4)}", 96, 192)
 
-    /** Parede de trás vista de dentro, 32x64. */
-    fun backWall(kind: Int, edge: Int, frame: Int): PixBuf {
-        val k = if (kind in 0..3) kind else 0
-        val fr = if (k == 2) (frame and 1) else 0
-        return load("b$k$edge$fr", 32, 64)
-    }
+    /** Telhado da taverna (15 colunas): 502x190. */
+    fun roof(): PixBuf = load("roof", 502, 190)
+
+    /** Parede de fundo (andar de cima) vista de dentro, coluna [rel] (0..14), 32x96. frame 0/1 anima as tochas. */
+    fun backCol(rel: Int, frame: Int): PixBuf = load("bk${rel.coerceIn(0, 14)}${frame and 1}", 32, 96)
+
+    // compatibilidade com ArtHouse (não usados pelo desenho da taverna)
+    fun facade(kind: Int, edge: Int, frame: Int): PixBuf = facadeCol(0)
+    fun backWall(kind: Int, edge: Int, frame: Int): PixBuf = backCol(0, 0)
 
     fun floor(v: Int): PixBuf = load("fl${v and 3}", 32, 32)
-    fun table(half: Int): PixBuf = load("tb${half and 1}", 32, 32)
+
+    /** Piso do andar de cima (galeria). */
+    fun loftFloor(v: Int): PixBuf = load("lf${v and 3}", 32, 32)
+
+    /** Balaustrada do andar de cima 32x48: 0 ponta esquerda, 1 meio, 2 ponta direita, 3 meio com lampião. */
+    fun rail(kind: Int): PixBuf = load("rl${kind.coerceIn(0, 3)}", 32, 48)
+
+    /** Escada subindo para o norte, 32x48: [side] 0 parede à esquerda, 1 parede à direita; [part] 0 base, 1 meio, 2 topo. */
+    fun stairs(side: Int, part: Int): PixBuf = load("st${side and 1}${part.coerceIn(0, 2)}", 32, 48)
+
+    /** Cama de hóspede 32x48: 0 vermelha, 1 azul. */
+    fun bed(kind: Int): PixBuf = load("bd${kind and 1}", 32, 48)
+
+    /** Lareira de pedra (2 quadrados): lado 0 esquerdo, 1 direito; frame 0/1 anima as chamas. 32x48. */
+    fun hearth(side: Int, frame: Int): PixBuf = load((if (side == 0) "hl" else "hr") + (frame and 1), 32, 48)
+
+    /** Prateleira de parede 32x48: 0 canecas e jarras, 1 garrafas, 2 queijos, pão e enchidos. */
+    fun shelf(kind: Int): PixBuf = load("sf${kind.coerceIn(0, 2)}", 32, 48)
+
+    /** Tonéis empilhados em cavalete (0) ou barril em pé (1), 32x48. */
+    fun casks(kind: Int): PixBuf = load("ck${kind and 1}", 32, 48)
+
+    /** Balcão 32x40: 0 ponta esquerda, 1 meio, 2 ponta direita, 3 torre de chope, 4 canecas, 5 livro-caixa e vela. */
+    fun counter(part: Int): PixBuf = when (part) {
+        0 -> load("cnL", 32, 40)
+        2 -> load("cnR", 32, 40)
+        3 -> load("cnT", 32, 40)
+        4 -> load("cnC", 32, 40)
+        5 -> load("cnB", 32, 40)
+        else -> load("cnM", 32, 40)
+    }
+
+    /** Mesa comprida: [half] 0 esquerda/1 direita, [variant] 0 ou 1. */
+    fun table(half: Int, variant: Int): PixBuf = load("tb${(variant and 1) * 2 + (half and 1)}", 32, 32)
+
     fun stool(): PixBuf = load("stool", 32, 32)
-    fun counter(part: Int): PixBuf = load("ct${part.coerceIn(0, 2)}", 32, 32)
-    fun cask(): PixBuf = load("cask", 32, 32)
 }

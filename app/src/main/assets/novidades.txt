@@ -1,3 +1,18 @@
+#id 2026-10-13-a
+#titulo Taverna Caneca Dourada reconstruída do zero, com 2 andares!
+- Fachada nova e bem maior: andar de cima em enxaimel com sacada de ferro, portas de vidro, placa de caneca, estandarte e bandeirolas; térreo de pedra com janelas em arco, grades, jardineiras e lampiões
+- Portal gigante de 3 quadrados com arco de pedra, fecho dourado, folhas com ferragens e aldrava: o boneco passa pelo meio e a porta é bem maior que ele
+- Telhado novo com empena central, lucarnas, duas chaminés de pedra com fumaça e cata-vento em forma de caneca
+- Por dentro: galeria no andar de cima (subindo pelas duas escadas laterais) com camas, baús e portas dos quartos, balaustrada com lampião, salão com lareira, balcão de bar e mesas compridas
+
+#id 2026-10-12-d
+#titulo Taverna refeita do zero: agora faz sentido!
+- Fachada nova desenhada como uma peça só e bem mais alta: enxaimel no andar de cima com sacada, placa de caneca e estandarte; térreo de pedra com 4 janelas iguais, 2 lampiões e a porta em arco no centro
+- Porta de verdade: ao entrar, a fachada vira um murinho baixo com o vão livre, então o boneco não atravessa mais a porta nem fica sobre ela
+- Telhado ajustado à fachada, sem frestas
+- Interior novo: lareira grande de pedra com fogo animado, prateleiras de canecas, garrafas e queijos, barris em cavalete, balcão de bar com torneiras, tapete do portão ao balcão e duas mesas compridas com banquetas
+- Parede de fundo contínua com janelas, tapeçarias, tochas animadas e escudo com espadas sobre a lareira
+
 #id 2026-10-12-c
 #titulo Taverna Caneca Dourada refeita em pixel art!
 - Fachada nova de 3 andares de altura: enxaimel, janelas de vidro em losangos, sacada de ferro e bandeirolas

@@ -423,11 +423,11 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
             if (k >= 16) break
             val hs = wd.houses[k]
             var inside = pl.x >= hs.x0 && pl.x < hs.x0 + hs.hw && pl.y >= hs.y0 && pl.y <= hs.fu
-            if (!inside && pl.y == hs.fl && pl.x >= hs.doorX && pl.x <= hs.doorX + 1) inside = true
+            if (!inside && pl.y == hs.fl && pl.x >= hs.doorX && pl.x < hs.doorX + hs.doorW) inside = true
             val ta = if (inside) 0f else 1f
             val sp = 5f * dt
             roofA[k] = if (roofA[k] < ta) min(ta, roofA[k] + sp) else max(ta, roofA[k] - sp)
-            val dx = pl.fx + 0.5f - (hs.doorX + 1f)
+            val dx = pl.fx + 0.5f - (hs.doorX + hs.doorW / 2f)
             val dy = pl.fy + 0.5f - (hs.fl + 0.5f)
             val tod = if (dx * dx + dy * dy < 2.7f * 2.7f) 1f else 0f
             val ds = 4f * dt
@@ -447,6 +447,22 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         if (o == Ob.WALL) {
             if (ty == hs.y0) {
                 if (open <= 0.02f) return
+                if (hs.style == ArtTavern.STYLE) {
+                    val rel = tx - hs.x0
+                    val tf = ((g.time * 5f).toInt()) and 1
+                    val tkey = 3200000 + rel * 2 + tf
+                    var tbm = tileCache[tkey]
+                    if (tbm == null) {
+                        tbm = ArtTavern.backCol(rel, tf).toBitmap(s)
+                        tileCache[tkey] = tbm
+                    }
+                    if ((rel == 1 || rel == 13) && inLit(i)) addLight(sx0 + 16f * s, sy0 - 30f * s, tile * 2.4f, 0)
+                    if ((rel == 3 || rel == 11) && inLit(i)) addLight(sx0 + 16f * s, sy0 - 36f * s, tile * 1.8f, 2)
+                    bp.alpha = (open * 255f).toInt().coerceIn(0, 255)
+                    c.drawBitmap(tbm!!, sx0, sy0 - (tbm.height - tile), bp)
+                    bp.alpha = 255
+                    return
+                }
                 val kind = v and 3
                 val edge = if (tx == hs.x0) 1 else if (tx == hs.x0 + hs.hw - 1) 2 else 0
                 val fr = if (kind == 2) ((g.time * 5f).toInt() + tx) and 1 else 0
@@ -472,6 +488,11 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
             }
             return
         }
+        if (o == Ob.FAC && hs.style == ArtTavern.STYLE) {
+            val rel = tx - hs.x0
+            drawTavernFront(c, hs, rel, sx0, sy0, open, false)
+            return
+        }
         if (o == Ob.FAC) {
             val kind = v and 3
             val edge = (v shr 2) and 3
@@ -492,6 +513,11 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
             return
         }
         // porta dupla
+        if (hs.style == ArtTavern.STYLE) {
+            val rel = tx - hs.x0
+            drawTavernFront(c, hs, rel, sx0, sy0, open, true)
+            return
+        }
         val part = v and 1
         val style = (v shr 1) and 7
         val kind = (v shr 4) and 7
@@ -506,6 +532,49 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         if (bm == null) return
         if (frame > 0) addLight(sx0 + (if (part == 0) 32f else 0f) * s, sy0 - 4f * s, tile * (0.9f + 0.25f * frame), 0)
         c.drawBitmap(bm, sx0, sy0 - (bm.height - tile), bp)
+    }
+
+    /** Fachada da taverna: vista de fora (inteira) some quando você entra e dá lugar a um murinho baixo, para o boneco
+     *  nunca ficar atravessando a parede/porta. [door] = colunas da porta dupla. */
+    private fun drawTavernFront(c: Canvas, hs: House, rel: Int, sx0: Float, sy0: Float, open: Float, door: Boolean) {
+        val s = tile / 32
+        val hd = g.world.hid[(hs.fl) * g.world.w + hs.x0]
+        val frame = if (door) (doorO[hd.coerceIn(0, 15)] * 4f + 0.5f).toInt().coerceIn(0, 4) else 0
+        val dl = hs.doorX - hs.x0
+        val part = rel - dl
+        val key = if (door) 4100000 + frame * 3 + part else 4000000 + rel
+        var bm = tileCache[key]
+        if (bm == null) {
+            if (door) {
+                val big = ArtTavern.doorBig(frame)
+                for (pr in 0 until hs.doorW) tileCache[4100000 + frame * 3 + pr] = ArtHouse.crop(big, pr * 32, 0, 32, big.h).toBitmap(s)
+                bm = tileCache[key]
+            } else {
+                bm = ArtTavern.facadeCol(rel).toBitmap(s)
+                tileCache[key] = bm
+            }
+        }
+        val ckey = 4200000 + rel
+        var cb = tileCache[ckey]
+        if (cb == null) {
+            cb = ArtTavern.facadeCut(rel).toBitmap(s)
+            tileCache[ckey] = cb
+        }
+        if (!door && (rel == 1 || rel == 3 || rel == 11 || rel == 13)) addLight(sx0 + 16f * s, sy0 - 25f * s, tile * 1.5f, 2)
+        if (!door && rel == 5) addLight(sx0 + 6f * s, sy0 - 50f * s, tile * 2.0f, 0)
+        if (!door && rel == 9) addLight(sx0 + 26f * s, sy0 - 50f * s, tile * 2.0f, 0)
+        if (door && frame > 0 && part == 1) addLight(sx0 + 16f * s, sy0 - 4f * s, tile * (1.3f + 0.3f * frame), 0)
+        val a1 = (1f - open)
+        if (a1 > 0.02f && bm != null) {
+            bp.alpha = (a1 * 255f).toInt().coerceIn(0, 255)
+            c.drawBitmap(bm, sx0, sy0 - (bm.height - tile), bp)
+            bp.alpha = 255
+        }
+        if (open > 0.02f) {
+            bp.alpha = (open * 255f).toInt().coerceIn(0, 255)
+            c.drawBitmap(cb!!, sx0, sy0 - (cb.height - tile), bp)
+            bp.alpha = 255
+        }
     }
 
     private fun drawRoofs(c: Canvas) {
@@ -575,7 +644,8 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         } else if (o == Ob.FOUNTAIN) {
             v = (g.time * 5f).toInt() and 3
         } else if (o == Ob.FIRE) {
-            v = ((g.time * 4f).toInt() + tx) and 1
+            val fb = wd.ovar[i]
+            v = if (fb >= 2) 2 + (fb - 2) * 2 + (((g.time * 4f).toInt()) and 1) else ((g.time * 4f).toInt() + tx) and 1
         } else if (o == Ob.CAULDRON) {
             v = ((g.time * 3f).toInt() + tx) and 1
         } else if (o == Ob.FENCE) {

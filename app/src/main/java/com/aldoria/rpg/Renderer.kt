@@ -679,7 +679,7 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         val sx = Math.round(sxOf(cr.fx)).toFloat()
         val sy = Math.round(syOf(cr.fy)).toFloat()
         if (!onScreen(sx, sy)) return
-        val frame = if (cr.moving) ((cr.walk * 2f).toInt() and 3) else 0
+        val frame = if (mage) Art.mageFrame(cr.moving, cr.walk) else if (cr.moving) ((cr.walk * 2f).toInt() and 3) else 0
         p.style = Paint.Style.FILL
         p.color = 0x55000000
         rect.set(sx + t * 0.18f, sy + t * 0.82f, sx + t * 0.82f, sy + t * 0.98f)
@@ -689,10 +689,9 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         c.drawBitmap(bm, sx, sy, if (cr.flash > 0f) flashP else bp)
         if (mage) {
             val s = t / 64f
-            val di = if (cr.dir == 3) 1 else cr.dir
-            val ox = MageData.ORB[(di * 4 + frame) * 2]
-            val hx = if (cr.dir == 3) 64f - ox else ox
-            val hy = MageData.ORB[(di * 4 + frame) * 2 + 1]
+            val oi = (cr.dir * MageData.FRAMES + frame) * 2
+            val hx = MageData.ORB[oi]
+            val hy = MageData.ORB[oi + 1]
             val pulse = 0.8f + 0.2f * sin(g.time * 6f)
             var ch = 0f
             for (v in g.pressT) if (v > ch) ch = v

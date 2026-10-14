@@ -203,11 +203,10 @@ class Game(ctx: Context) {
     /** Posição (em quadrados) da esfera do cajado, de onde saem as magias. */
     private fun orb(): FloatArray {
         val p = player
-        val frame = if (p.moving) ((p.walk * 2f).toInt() and 3) else 0
-        val di = if (p.dir == 3) 1 else p.dir
-        val ox = MageData.ORB[(di * 4 + frame) * 2]
-        val hx = if (p.dir == 3) 64f - ox else ox
-        val hy = MageData.ORB[(di * 4 + frame) * 2 + 1]
+        val frame = Art.mageFrame(p.moving, p.walk)
+        val oi = (p.dir * MageData.FRAMES + frame) * 2
+        val hx = MageData.ORB[oi]
+        val hy = MageData.ORB[oi + 1]
         orbPt[0] = p.fx + hx / 64f
         orbPt[1] = p.fy + hy / 64f
         return orbPt

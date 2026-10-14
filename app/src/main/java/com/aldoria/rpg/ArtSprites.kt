@@ -23,7 +23,7 @@ object ArtSprites {
     private val CRYSTAL_L = h(0xFFFFE0A0)
     private val DARK = h(0xFF2A1A10)
 
-    /** Mago em 64 x 64 pixels (dados em MageData). dir: 0 costas, 1 direita, 2 frente. frame: 0 parado, 1 passo A, 2 parado, 3 passo B. */
+    /** Mago em 64 x 64 pixels (dados em MageData). dir: 0 costas, 1 direita, 2 frente, 3 esquerda. frame: 0 a 5 (ciclo de caminhada; 0 é o quadro parado). */
     private var mageCols: IntArray? = null
 
     fun mage(dir: Int, frame: Int): PixBuf {
@@ -38,7 +38,7 @@ object ArtSprites {
         }
         val bs = MageData.CH.length
         val b = PixBuf(64, 64)
-        val s = MageData.F[dir * 4 + frame]
+        val s = MageData.F[dir * MageData.FRAMES + frame]
         var i = 0
         var pos = 0
         while (i + 1 < s.length) {

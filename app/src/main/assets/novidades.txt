@@ -1,3 +1,9 @@
+#id 2026-10-14-a
+#titulo Mago novo em pixel art!
+- Mago redesenhado: túnica escura com detalhes dourados, cabelo preso e uma bola de fogo na mão
+- Animação de caminhada com 6 quadros nas quatro direções (a esquerda agora tem desenho próprio, não é mais espelhada)
+- O brilho e a saída das magias seguem a bola de fogo em cada passo
+
 #id 2026-10-13-b
 #titulo Taverna gigante com placa e galeria!
 - Taverna bem maior (19 x 12 blocos): salão amplo com lareira central, balcão comprido, quatro mesas compridas e corredor até as escadas

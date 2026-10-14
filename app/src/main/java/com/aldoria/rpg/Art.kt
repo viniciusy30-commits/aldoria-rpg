@@ -135,15 +135,13 @@ object Art {
         return out
     }
 
-    /** [direção 0 cima, 1 direita, 2 baixo, 3 esquerda][quadro 0..3] */
+    /** [direção 0 cima, 1 direita, 2 baixo, 3 esquerda][quadro 0 until MageData.FRAMES] (as 4 direções são desenhadas, nenhuma é espelhada) */
     fun mage(size: Int): Array<Array<Bitmap>> {
-        val up = Array(4) { f -> ArtSprites.mage(0, f).toBitmapSize(size) }
-        val rightPix = Array(4) { f -> ArtSprites.mage(1, f) }
-        val down = Array(4) { f -> ArtSprites.mage(2, f).toBitmapSize(size) }
-        val right = Array(4) { f -> rightPix[f].toBitmapSize(size) }
-        val left = Array(4) { f -> ArtNature.mirror(rightPix[f]).toBitmapSize(size) }
-        return arrayOf(up, right, down, left)
+        return Array(4) { d -> Array(MageData.FRAMES) { f -> ArtSprites.mage(d, f).toBitmapSize(size) } }
     }
+
+    /** Quadro do mago: 0 parado; andando percorre os 6 quadros no mesmo tempo que o ciclo antigo de 4 (2 unidades de "walk"). */
+    fun mageFrame(moving: Boolean, walk: Float): Int = if (moving) (walk * 3f).toInt() % MageData.FRAMES else 0
 
     fun rat(size: Int): Array<Array<Bitmap>> {
         val s = size / 32

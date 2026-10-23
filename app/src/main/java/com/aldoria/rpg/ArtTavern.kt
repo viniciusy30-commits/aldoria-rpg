@@ -79,7 +79,7 @@ object ArtTavern {
     }
 
     /** Silhueta nova: telhado de duas águas em telhas reais, com empena de madeira abaixo. */
-    fun roof(): PixBuf = cached("roof_real", 694, 222) { b ->
+    fun roof(): PixBuf = cached("roof_real", 694, 318) { b ->
         val src = ext()
         val tiles = arrayOf(intArrayOf(176, 16), intArrayOf(192, 16), intArrayOf(176, 32), intArrayOf(192, 32))
         // Quatro fiadas triangulares: a largura cresce de forma escalonada até os beirais.
@@ -98,7 +98,7 @@ object ArtTavern {
             }
         }
         // Empena e travessas da parte alta: madeira e reboco retirados do mesmo tileset.
-        for (row in 0..2) {
+        for (row in 0..5) {
             val y = 128 + row * 32
             var col = 0
             var x = 0

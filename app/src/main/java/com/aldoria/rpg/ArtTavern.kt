@@ -3,7 +3,7 @@ package com.aldoria.rpg
 import android.content.Context
 
 /**
- * Caneca Dourada — pixel art procedural de verdade.
+ * Caneca Dourada — pixel art premium (reconstruida do zero).
  * Fachada de pedra + enxaimel, portal ogival, salão com lareira, balcão, mesas e galeria.
  * Não depende mais dos tilesets externos (que ficavam desalinhados e bugados).
  */
@@ -163,23 +163,35 @@ object ArtTavern {
         b.rect(0, 126, 32, 2, WOOD_DK)
         // detalhes por coluna
         when (rel % 7) {
-            0, 6 -> {
-                // canto: hera + barril
-                for (i in 0 until 30) {
-                    val x = 2 + rn.nextInt(10)
-                    val y = 60 + rn.nextInt(50)
-                    b.set(x, y, intArrayOf(h(0xFF2F7A3A), h(0xFF3F9A4A), h(0xFF245E2E))[rn.nextInt(3)])
+            0 -> {
+                for (i in 0 until 45) {
+                    val x = 1 + rn.nextInt(12)
+                    val y = 55 + rn.nextInt(60)
+                    b.set(x, y, intArrayOf(h(0xFF2F7A3A), h(0xFF3F9A4A), h(0xFF245E2E), h(0xFF4AAA3A))[rn.nextInt(4)])
                 }
+                b.ellipse(10f, 170f, 7f, 9f, WOOD, true)
+                b.rect(4, 168, 13, 2, IRON)
             }
             1, 5 -> {
-                windowAmber(b, 16, 70, true)
-                lantern(b, 15, 100, 0)
+                windowAmber(b, 16, 62, true)
+                lantern(b, 15, 95, 0)
             }
             2, 4 -> {
-                windowAmber(b, 16, 70, rel % 2 == 0)
+                windowAmber(b, 16, 62, rel % 2 == 0)
             }
             3 -> {
-                mugSign(b, 16, 78)
+                mugSign(b, 16, 72)
+                lantern(b, 6, 98, 1)
+                lantern(b, 24, 98, 0)
+            }
+            6 -> {
+                for (i in 0 until 40) {
+                    val x = 18 + rn.nextInt(12)
+                    val y = 55 + rn.nextInt(60)
+                    b.set(x, y, intArrayOf(h(0xFF2F7A3A), h(0xFF3F9A4A), h(0xFF245E2E))[rn.nextInt(3)])
+                }
+                b.ellipse(22f, 172f, 7f, 9f, WOOD, true)
+                b.rect(16, 170, 13, 2, IRON)
             }
         }
         // sombra superior (telhado começa acima)

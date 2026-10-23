@@ -542,6 +542,58 @@ object ArtTavern {
         b.groundShadow(16f, 29f, 8f, 1.4f)
     }
 
+
+    /** Telhado da taverna (21 tiles de largura): telhas, empena e duas chaminés. */
+    fun roof(): PixBuf = cached("roof_tavern", 672, 318) { b ->
+        val tiles = intArrayOf(TILE_R, TILE_R2, TILE_R3, h(0xFF92402C))
+        // quatro fiadas triangulares
+        for (row in 0..3) {
+            val y = row * 28
+            val half = ((row + 1) * 84)
+            var col = 0
+            var x = 0
+            while (x < 672) {
+                if (kotlin.math.abs((x + 16) - 336) <= half) {
+                    val c = tiles[(col + row * 2) % tiles.size]
+                    b.rect(x, y, 32, 28, c)
+                    b.rect(x, y, 32, 2, shadeCol(c, 0.2f))
+                    b.rect(x, y + 26, 32, 2, shadeCol(c, -0.25f))
+                    b.rect(x, y, 1, 28, shadeCol(c, -0.3f))
+                }
+                x += 32
+                col++
+            }
+        }
+        // empena / wall under roof peak
+        for (row in 0..5) {
+            val y = 112 + row * 28
+            var x = 0
+            var col = 0
+            while (x < 672) {
+                val c = if ((col + row) % 3 == 0) PLASTER_DK else PLASTER
+                b.rect(x, y, 32, 28, c)
+                b.rect(x, y, 3, 28, BEAM)
+                b.rect(x + 29, y, 3, 28, BEAM)
+                x += 32
+                col++
+            }
+        }
+        // cumeeira
+        b.rect(0, 0, 672, 4, BEAM)
+        b.rect(300, 0, 72, 8, BEAM_LT)
+        // duas chaminés
+        for (cx in intArrayOf(120, 520)) {
+            b.rect(cx, 8, 28, 48, STONE)
+            b.rect(cx, 8, 28, 2, STONE_LT)
+            b.rect(cx + 2, 4, 24, 8, STONE_DK)
+            b.rect(cx + 4, 0, 20, 6, STONE)
+            for (k in 0 until 3) b.rect(cx, 16 + k * 12, 28, 1, STONE_DK)
+        }
+        // beiral
+        b.rect(0, 108, 672, 6, BEAM)
+        b.rect(0, 108, 672, 2, BEAM_LT)
+    }
+
     // Compatibilidade
     fun facade(kind: Int, edge: Int, frame: Int): PixBuf = facadeCol((kind + edge + frame).coerceIn(0, 20))
     fun backWall(kind: Int, edge: Int, frame: Int): PixBuf = backCol((kind + edge).coerceIn(0, 20), frame)

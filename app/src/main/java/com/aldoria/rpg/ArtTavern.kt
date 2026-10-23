@@ -136,7 +136,7 @@ object ArtTavern {
     }
 
     fun shelf(kind: Int): PixBuf = cached("shelf_real_" + kind.coerceIn(0, 2), 32, 48) { b ->
-        blit2(b, inside(), 208 + kind.coerceIn(0, 2) * 16, 64, 16, 24, 0, 0)
+        blit2(b, inside(), 96 + kind.coerceIn(0, 2) * 16, 208, 16, 24, 0, 0)
     }
 
     fun casks(kind: Int): PixBuf = cached("casks_real_" + (kind and 1), 32, 48) { b ->

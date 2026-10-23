@@ -240,14 +240,33 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
         nLights++
     }
 
+    /**
+     * Iluminação suave em gradiente, sem os anéis sobrepostos que criavam
+     * manchas circulares duras no chão. O halo usa queda contínua de alpha
+     * e uma camada central discreta para dar volume à chama.
+     */
     private fun glowAdd(c: Canvas, x: Float, y: Float, r: Float, col: Int, a: Float) {
+        if (a <= 0.005f || r <= 1f) return
+        val radius = r.coerceAtLeast(2f)
+        val center = withAlpha(col, (a * 0.34f).coerceIn(0f, 0.34f))
+        val mid = withAlpha(col, (a * 0.16f).coerceIn(0f, 0.16f))
+        val edge = withAlpha(col, (a * 0.045f).coerceIn(0f, 0.045f))
         glowP.style = Paint.Style.FILL
-        glowP.xfermode = addMode
-        for (k in 0 until 5) {
-            glowP.color = withAlpha(col, a * 0.11f)
-            c.drawCircle(x, y, r * (1f - k * 0.2f), glowP)
-        }
+        glowP.alpha = 255
         glowP.xfermode = null
+        glowP.shader = RadialGradient(
+            x, y, radius,
+            intArrayOf(center, mid, edge, Color.TRANSPARENT),
+            floatArrayOf(0f, 0.32f, 0.68f, 1f),
+            Shader.TileMode.CLAMP
+        )
+        c.drawCircle(x, y, radius, glowP)
+        glowP.shader = null
+        // Pequeno núcleo luminoso; evita o aspecto de uma mancha chapada.
+        glowP.color = withAlpha(col, (a * 0.18f).coerceIn(0f, 0.18f))
+        c.drawCircle(x, y, radius * 0.13f, glowP)
+        glowP.color = Color.WHITE
+        glowP.alpha = 255
     }
 
     /** Mantém a câmera dentro do mapa para não mostrar o vazio preto além da borda. */
@@ -761,11 +780,13 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
     private fun drawDaylight(c: Canvas) {
         p.style = Paint.Style.FILL
         if (night > 0.02f) {
-            p.color = withAlpha(0xFF0A1236.toInt(), night * 0.55f)
+            // Azul noturno mais profundo, aplicado uniformemente antes dos halos.
+            p.color = withAlpha(0xFF101A38.toInt(), night * 0.48f)
             c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p)
         }
         if (dusk > 0.05f) {
-            p.color = withAlpha(0xFFFF7A30.toInt(), dusk * 0.13f)
+            // Entardecer sutil: evita o filtro laranja forte cobrindo toda a arte.
+            p.color = withAlpha(0xFFFF9A58.toInt(), dusk * 0.075f)
             c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p)
         }
         if (night > 0.12f) {

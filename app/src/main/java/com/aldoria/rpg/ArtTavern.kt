@@ -146,6 +146,10 @@ object ArtTavern {
         }
     }
 
+    // Compatibilidade com os despachantes genéricos de ArtHouse.
+    fun facade(kind: Int, edge: Int, frame: Int): PixBuf = facadeCol(0)
+    fun backWall(kind: Int, edge: Int, frame: Int): PixBuf = backCol(0, 0)
+
     /** Fachada baixa, visível por dentro: base de pedra, balcão de madeira e corrimão. */
     fun facadeCut(rel: Int): PixBuf = cached("new_cc${rel.coerceIn(0,18)}", 32, 192) { b ->
         val col = rel.coerceIn(0,18)

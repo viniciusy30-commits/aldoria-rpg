@@ -462,7 +462,7 @@ object ArtTavern {
             b.rect(5, 2, 22, 44, outline); b.rect(7, 4, 18, 40, wood)
             b.rect(6, 9, 20, 3, gold); b.rect(6, 35, 20, 3, gold)
             b.rect(8, 6, 3, 31, woodLight); b.rect(21, 6, 2, 31, woodDark)
-            b.ellipse(16f,5f,9f,3f,woodDark); b.ellipse(16f,5f,6f,2f,woodLight)
+            b.ellipse(16f,5f,9f,3f,woodDark,false); b.ellipse(16f,5f,6f,2f,woodLight,false)
         }
     }
 

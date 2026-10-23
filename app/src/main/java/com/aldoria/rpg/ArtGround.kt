@@ -30,6 +30,31 @@ object ArtGround {
             b.set(x + 1, y + 1, dark)
             if (i % 2 == 0) b.set(x - 1, y - 1, hi)
         }
+        // Camadas de vegetação em grupos legíveis: textura orgânica sem ruído
+        // aleatório excessivo, mantendo a leitura limpa em escala de jogo.
+        for (cluster in 0 until 5) {
+            val cx = 3 + rn.nextInt(26)
+            val cy = 4 + rn.nextInt(24)
+            val patch = shadeCol(base, if (cluster % 2 == 0) -0.10f else 0.08f)
+            b.set(cx, cy, patch)
+            b.set(cx + 1, cy, patch)
+            b.set(cx, cy + 1, shadeCol(patch, -0.06f))
+            if (cluster % 2 == 0) {
+                b.set(cx - 1, cy, light)
+                b.set(cx + 1, cy - 1, hi)
+            } else {
+                b.set(cx + 2, cy + 1, dark)
+                b.set(cx + 1, cy + 2, dark)
+            }
+        }
+        // Pequenas lâminas de grama com direção e highlights consistentes.
+        for (i in 0 until 9) {
+            val x = 2 + rn.nextInt(28)
+            val y = 5 + rn.nextInt(24)
+            b.set(x, y, dark)
+            b.set(x, y - 1, light)
+            if (i % 3 == 0 && x < 30) b.set(x + 1, y - 2, hi)
+        }
         when (v) {
             4 -> for (i in 0 until 3) pebble(b, 4 + rn.nextInt(24), 4 + rn.nextInt(24), shadeCol(base, -0.3f))
             5 -> {
@@ -83,6 +108,18 @@ object ArtGround {
             val y = 3 + rn.nextInt(26)
             b.line(x, y, x + 4, y + 1, dark)
             b.line(x + 4, y + 1, x + 6, y + 3, dark)
+        }
+        // Grãos maiores e marcas curtas de passagem, para caminhos menos planos.
+        for (i in 0 until 7) {
+            val x = 2 + rn.nextInt(28)
+            val y = 2 + rn.nextInt(27)
+            b.rect(x, y, if (i % 3 == 0) 2 else 1, 1, if (i % 2 == 0) light else shadeCol(base, -0.24f))
+        }
+        for (i in 0 until 3) {
+            val x = 4 + rn.nextInt(24)
+            val y = 4 + rn.nextInt(24)
+            b.set(x, y, h(0xFF6E4D35))
+            if (x < 30) b.set(x + 1, y, h(0xFFC6A17A))
         }
         if (v == 3) {
             for (row in intArrayOf(9, 21)) {

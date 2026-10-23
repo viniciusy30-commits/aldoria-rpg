@@ -1,0 +1,7 @@
+Pixel art asset credits
+
+Medieval Tileset — Calciumtrice, commissioned by Andreas Skowron.
+Source: https://opengameart.org/content/medieval-tileset
+License: Creative Commons Attribution 3.0 (CC BY 3.0).
+
+The exterior and interior PNG sheets are retained as source sheets and cropped at runtime by ArtTavern. The source art is not claimed as original Aldoria art.

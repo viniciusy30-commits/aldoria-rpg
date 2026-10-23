@@ -321,7 +321,7 @@ class World {
         setO(36, 13, Ob.SHELF, 0); setO(36, 14, Ob.SHELF, 1); setO(41, 13, Ob.SHELF, 2)
         setO(41, 14, Ob.CAULDRON, 0); setO(41, 15, Ob.BARREL, 0); setO(41, 16, Ob.CRATE, 0)
         setO(36, 16, Ob.BARREL, 1); setO(36, 17, Ob.CRATE, 1)
-        // Caneca Dourada renovada (x0=8, y0=23, 19x14): x = 8 + coluna, y = 25 + linha.
+        // Caneca Dourada renovada (x0=8, y0=23, 19x14): x = 8 + coluna, y = 23 + linha.
         // linhas 1..4 = galeria (andar de cima), 5..12 = salão, 13 = fachada com o portal de 3 quadrados (colunas 8..10).
         run {
             val th = houses[3]

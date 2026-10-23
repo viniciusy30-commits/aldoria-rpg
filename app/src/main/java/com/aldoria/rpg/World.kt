@@ -288,7 +288,7 @@ class World {
         buildHouse(9, 9, 12, 11, 5, 1)    // Torre-casarão do mago
         buildHouse(22, 11, 9, 9, 4, 2)    // Ferraria
         buildHouse(35, 10, 8, 10, 1, 0)   // Casa de família
-        buildHouse(8, 25, 19, 12, 6, 1)   // Taverna "Caneca Dourada" v5: grande, 2 andares (salão + galeria), portal de 3 quadrados
+        buildHouse(8, 23, 19, 14, 6, 1)   // Caneca Dourada: salão amplo, galeria maior e entrada espaçosa
         buildHouse(28, 29, 8, 8, 2, 2)    // Alquimista
         buildHouse(37, 30, 6, 7, 0, 0)    // Chalé
 
@@ -321,50 +321,50 @@ class World {
         setO(36, 13, Ob.SHELF, 0); setO(36, 14, Ob.SHELF, 1); setO(41, 13, Ob.SHELF, 2)
         setO(41, 14, Ob.CAULDRON, 0); setO(41, 15, Ob.BARREL, 0); setO(41, 16, Ob.CRATE, 0)
         setO(36, 16, Ob.BARREL, 1); setO(36, 17, Ob.CRATE, 1)
-        // Taverna "Caneca Dourada" v5 (x0=8, y0=25, 19x12): x = 8 + coluna, y = 25 + linha.
-        // linhas 1..3 = galeria (andar de cima), 4..10 = salão, 11 = fachada com o portal de 3 quadrados (colunas 8..10).
+        // Caneca Dourada renovada (x0=8, y0=23, 19x14): x = 8 + coluna, y = 25 + linha.
+        // linhas 1..4 = galeria (andar de cima), 5..12 = salão, 13 = fachada com o portal de 3 quadrados (colunas 8..10).
         run {
             val th = houses[3]
             for (yy in th.y0 until th.y0 + th.hh) for (xx in th.x0 until th.x0 + th.hw) {
                 val ii = yy * w + xx
                 if (ground[ii] != Gd.WOOD) continue
                 val r = yy - th.y0
-                vari[ii] = (if (r in 1..3) 8 else 4) + (vari[ii] and 3)   // 8.. = piso da galeria, 4.. = piso do salão
+                vari[ii] = (if (r in 1..4) 8 else 4) + (vari[ii] and 3)   // 8.. = piso da galeria, 4.. = piso do salão
             }
         }
-        rug(16, 32, 3, 4, 6)
+        rug(16, 30, 3, 4, 6)
         // galeria: camas, baús e estantes junto da parede (as portas dos quartos, nas colunas 6 e 12, ficam livres)
-        setO(9, 26, Ob.SHELF, 0); setO(10, 26, Ob.BED, 1); setO(11, 26, Ob.BED, 2); setO(12, 26, Ob.CHEST, 0)
-        setO(25, 26, Ob.SHELF, 2); setO(24, 26, Ob.BED, 2); setO(23, 26, Ob.BED, 1); setO(22, 26, Ob.CHEST, 0)
-        setO(16, 26, Ob.SHELF, 1); setO(18, 26, Ob.SHELF, 1)
-        setO(9, 27, Ob.BARREL, 3); setO(25, 27, Ob.BARREL, 3)
+        setO(9, 24, Ob.SHELF, 0); setO(10, 24, Ob.BED, 1); setO(11, 24, Ob.BED, 2); setO(12, 24, Ob.CHEST, 0)
+        setO(25, 24, Ob.SHELF, 2); setO(24, 24, Ob.BED, 2); setO(23, 24, Ob.BED, 1); setO(22, 24, Ob.CHEST, 0)
+        setO(16, 24, Ob.SHELF, 1); setO(18, 24, Ob.SHELF, 1)
+        setO(9, 25, Ob.BARREL, 3); setO(25, 25, Ob.BARREL, 3)
         // balaustrada (SHELFP 6 ponta esq., 7 meio, 8 ponta dir., 9 meio com lampião)
-        setO(10, 28, Ob.SHELFP, 6)
-        for (xx in 11..23) setO(xx, 28, Ob.SHELFP, if (xx == 13 || xx == 17 || xx == 21) 9 else 7)
-        setO(24, 28, Ob.SHELFP, 8)
+        setO(10, 26, Ob.SHELFP, 6)
+        for (xx in 11..23) setO(xx, 26, Ob.SHELFP, if (xx == 13 || xx == 17 || xx == 21) 9 else 7)
+        setO(24, 26, Ob.SHELFP, 8)
         // escadas laterais (CHAIR 2..4 parede à esquerda: base, meio, topo; 5..7 parede à direita)
-        setO(9, 28, Ob.CHAIR, 4); setO(9, 29, Ob.CHAIR, 3); setO(9, 30, Ob.CHAIR, 2)
-        setO(25, 28, Ob.CHAIR, 7); setO(25, 29, Ob.CHAIR, 6); setO(25, 30, Ob.CHAIR, 5)
+        setO(9, 26, Ob.CHAIR, 4); setO(9, 27, Ob.CHAIR, 3); setO(9, 28, Ob.CHAIR, 2)
+        setO(25, 26, Ob.CHAIR, 7); setO(25, 27, Ob.CHAIR, 6); setO(25, 28, Ob.CHAIR, 5)
         // fundo do salão (sob a galeria): baús, prateleiras e a lareira no centro (2 e 3)
-        setO(10, 29, Ob.CHEST, 0); setO(24, 29, Ob.CHEST, 0)
+        setO(10, 27, Ob.CHEST, 0); setO(24, 27, Ob.CHEST, 0)
         val back = intArrayOf(3, 4, 5, 4, 3)
-        for (k in 0..4) { setO(11 + k, 29, Ob.SHELFP, back[k]); setO(19 + k, 29, Ob.SHELFP, back[4 - k]) }
-        setO(16, 29, Ob.FIRE, 2); setO(17, 29, Ob.FIRE, 3); setO(18, 29, Ob.SHELFP, 4)
+        for (k in 0..4) { setO(11 + k, 27, Ob.SHELFP, back[k]); setO(19 + k, 27, Ob.SHELFP, back[4 - k]) }
+        setO(16, 27, Ob.FIRE, 2); setO(17, 27, Ob.FIRE, 3); setO(18, 27, Ob.SHELFP, 4)
         // atrás do balcão: barris de chope
-        setO(11, 30, Ob.BARREL, 4); setO(23, 30, Ob.BARREL, 4)
+        setO(11, 28, Ob.BARREL, 4); setO(23, 28, Ob.BARREL, 4)
         // balcão comprido (2 ponta esq., 3 meio, 4 ponta dir., 5 torre de chope, 6 canecas, 7 livro-caixa)
         val bar = intArrayOf(2, 3, 6, 3, 5, 3, 6, 3, 7, 3, 6, 3, 4)
-        for (k in bar.indices) setO(11 + k, 31, Ob.COUNTER, bar[k])
+        for (k in bar.indices) setO(11 + k, 29, Ob.COUNTER, bar[k])
         // bancos do balcão
-        for (xx in intArrayOf(12, 14, 20, 22)) setO(xx, 32, Ob.CHAIR, 1)
+        for (xx in intArrayOf(12, 14, 20, 22)) setO(xx, 30, Ob.CHAIR, 1)
         // quatro mesas compridas (3 e 4 esquerda; 5 e 6 direita) com banquetas em volta; corredor central livre
         for ((tx, a1, a2) in arrayOf(Triple(11, 3, 4), Triple(14, 3, 4), Triple(19, 5, 6), Triple(22, 5, 6))) {
-            setO(tx, 34, Ob.TABLE, a1); setO(tx + 1, 34, Ob.TABLE, a2)
-            setO(tx, 33, Ob.CHAIR, 1); setO(tx + 1, 33, Ob.CHAIR, 1); setO(tx, 35, Ob.CHAIR, 1); setO(tx + 1, 35, Ob.CHAIR, 1)
+            setO(tx, 32, Ob.TABLE, a1); setO(tx + 1, 32, Ob.TABLE, a2)
+            setO(tx, 31, Ob.CHAIR, 1); setO(tx + 1, 31, Ob.CHAIR, 1); setO(tx, 33, Ob.CHAIR, 1); setO(tx + 1, 33, Ob.CHAIR, 1)
         }
         // cantos da frente: barris em pé e vasos de flores
-        setO(9, 35, Ob.BARREL, 4); setO(25, 35, Ob.BARREL, 4)
-        setO(9, 34, Ob.PLANTER, 2); setO(25, 34, Ob.PLANTER, 0)
+        setO(9, 33, Ob.BARREL, 4); setO(25, 33, Ob.BARREL, 4)
+        setO(9, 32, Ob.PLANTER, 2); setO(25, 32, Ob.PLANTER, 0)
         // Alquimista: prateleiras, caldeirões e mesa de trabalho
         rug(30, 33, 4, 2, 2)
         setO(29, 30, Ob.SHELFP, 0); setO(30, 30, Ob.SHELFP, 1); setO(31, 30, Ob.SHELF, 0)

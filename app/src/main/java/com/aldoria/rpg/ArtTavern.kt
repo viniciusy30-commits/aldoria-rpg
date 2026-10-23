@@ -78,21 +78,35 @@ object ArtTavern {
         blit2(b, src, 112, 80, 16, 32, 32 + shift, 128)
     }
 
-    /** Telhado largo composto de telhas autênticas do tileset exterior. */
+    /** Silhueta nova: telhado de duas águas em telhas reais, com empena de madeira abaixo. */
     fun roof(): PixBuf = cached("roof_real", 694, 222) { b ->
         val src = ext()
         val tiles = arrayOf(intArrayOf(176, 16), intArrayOf(192, 16), intArrayOf(176, 32), intArrayOf(192, 32))
-        var row = 0
-        var y = 0
-        while (y < 222) {
-            var x = 0
+        // Quatro fiadas triangulares: a largura cresce de forma escalonada até os beirais.
+        for (row in 0..3) {
+            val y = row * 32
+            val half = ((row + 1) * 87).toInt()
             var col = 0
+            var x = 0
             while (x < 694) {
-                val t = tiles[(col + row * 2) % tiles.size]
-                blit2(b, src, t[0], t[1], 16, 16, x, y)
-                x += 32; col++
+                if (kotlin.math.abs((x + 16) - 347) <= half) {
+                    val t = tiles[(col + row * 2) % tiles.size]
+                    blit2(b, src, t[0], t[1], 16, 16, x, y)
+                }
+                x += 32
+                col++
             }
-            y += 32; row++
+        }
+        // Empena e travessas da parte alta: madeira e reboco retirados do mesmo tileset.
+        for (row in 0..2) {
+            val y = 128 + row * 32
+            var col = 0
+            var x = 0
+            while (x < 694) {
+                blit2(b, src, wallColumn(col), 48 + row * 16, 16, 16, x, y)
+                x += 32
+                col++
+            }
         }
     }
 
@@ -114,10 +128,8 @@ object ArtTavern {
     }
 
     fun rail(kind: Int): PixBuf = cached("rail_real_" + kind.coerceIn(0, 3), 32, 48) { b ->
-        val src = inside()
-        blit2(b, src, 96 + (kind % 4) * 16, 160, 16, 8, 0, 0)
-        blit2(b, src, 96, 176, 16, 16, 0, 16)
-        if (kind == 0 || kind == 2) blit2(b, src, 112, 176, 16, 16, 0, 16)
+        // Os segmentos de cerca do tileset exterior são reaproveitados como balaustrada.
+        blit2(b, ext(), 224 + (kind.coerceIn(0, 3) % 3) * 16, 0, 16, 24, 0, 0)
     }
 
     fun stairs(side: Int, part: Int): PixBuf = cached("stairs_real_" + (side and 1) + "_" + part.coerceIn(0, 2), 32, 48) { b ->

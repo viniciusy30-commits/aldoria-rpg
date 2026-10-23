@@ -44,7 +44,7 @@ object Ui {
 
 class Hit(val id: Int, val l: Float, val t: Float, val r: Float, val b: Float)
 
-class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) {
+class Renderer(ctx: Context, private val g: Game) {
     var w = 0
     var h = 0
     var tile = 64
@@ -101,6 +101,7 @@ class Renderer(@Suppress("UNUSED_PARAMETER") ctx: Context, private val g: Game) 
     private val mono: Typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
 
     init {
+        ArtTavern.init(ctx)
         tp.typeface = mono
         flashP.colorFilter = PorterDuffColorFilter(Color.argb(170, 255, 70, 70), PorterDuff.Mode.SRC_ATOP)
         ghostP.colorFilter = PorterDuffColorFilter(Color.argb(150, 90, 255, 140), PorterDuff.Mode.SRC_ATOP)

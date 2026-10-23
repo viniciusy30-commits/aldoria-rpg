@@ -79,7 +79,7 @@ object ArtTavern {
     }
 
     /** Silhueta nova: telhado de duas águas em telhas reais, com empena de madeira abaixo. */
-    fun roof(): PixBuf = cached("roof_real", 694, 318) { b ->
+    fun roof(): PixBuf = cached("roof_real", 672, 318) { b ->
         val src = ext()
         val tiles = arrayOf(intArrayOf(176, 16), intArrayOf(192, 16), intArrayOf(176, 32), intArrayOf(192, 32))
         // Quatro fiadas triangulares: a largura cresce de forma escalonada até os beirais.
@@ -88,7 +88,7 @@ object ArtTavern {
             val half = ((row + 1) * 87).toInt()
             var col = 0
             var x = 0
-            while (x < 694) {
+            while (x < 672) {
                 if (kotlin.math.abs((x + 16) - 347) <= half) {
                     val t = tiles[(col + row * 2) % tiles.size]
                     blit2(b, src, t[0], t[1], 16, 16, x, y)

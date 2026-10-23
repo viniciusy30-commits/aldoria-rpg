@@ -55,13 +55,13 @@ object ArtTavern {
 
     /** Coluna de fachada: quatro fiadas reais de parede e área superior transparente para o telhado. */
     fun facadeCol(rel: Int): PixBuf = cached("facade_" + rel, 32, 192) { b ->
-        val sx = wallColumn(rel.coerceIn(0, 18))
+        val sx = wallColumn(rel.coerceAtLeast(0))
         for (row in 0..3) blit2(b, ext(), sx, 48 + row * 16, 16, 16, 0, 64 + row * 32)
     }
 
     /** Parede baixa ao entrar: deixa o salão visível e mantém a base da fachada. */
     fun facadeCut(rel: Int): PixBuf = cached("cut_" + rel, 32, 192) { b ->
-        blit2(b, ext(), wallColumn(rel.coerceIn(0, 18)), 96, 16, 16, 0, 160)
+        blit2(b, ext(), wallColumn(rel.coerceAtLeast(0)), 96, 16, 16, 0, 160)
     }
 
     /** Portal de três tiles, com ombreiras de pedra e porta de madeira do tileset. */
@@ -79,7 +79,7 @@ object ArtTavern {
     }
 
     /** Telhado largo composto de telhas autênticas do tileset exterior. */
-    fun roof(): PixBuf = cached("roof_real", 630, 222) { b ->
+    fun roof(): PixBuf = cached("roof_real", 694, 222) { b ->
         val src = ext()
         val tiles = arrayOf(intArrayOf(176, 16), intArrayOf(192, 16), intArrayOf(176, 32), intArrayOf(192, 32))
         var row = 0
@@ -87,7 +87,7 @@ object ArtTavern {
         while (y < 222) {
             var x = 0
             var col = 0
-            while (x < 630) {
+            while (x < 694) {
                 val t = tiles[(col + row * 2) % tiles.size]
                 blit2(b, src, t[0], t[1], 16, 16, x, y)
                 x += 32; col++
@@ -106,11 +106,11 @@ object ArtTavern {
     }
 
     fun floor(v: Int): PixBuf = cached("floor_real_" + (v and 3), 32, 32) { b ->
-        blit2(b, inside(), (v and 3) * 16, 128, 16, 16, 0, 0)
+        blit2(b, inside(), (v and 3) * 16, 160, 16, 16, 0, 0)
     }
 
     fun loftFloor(v: Int): PixBuf = cached("loft_real_" + (v and 3), 32, 32) { b ->
-        blit2(b, inside(), (v and 3) * 16, 144, 16, 16, 0, 0)
+        blit2(b, inside(), ((v and 3) + 2) * 16, 160, 16, 16, 0, 0)
     }
 
     fun rail(kind: Int): PixBuf = cached("rail_real_" + kind.coerceIn(0, 3), 32, 48) { b ->

@@ -103,7 +103,7 @@ object ArtTavern {
             var col = 0
             var x = 0
             while (x < 694) {
-                blit2(b, src, wallColumn(col), 48 + row * 16, 16, 16, x, y)
+                blit2(b, src, wallColumn(col), 48 + (row % 4) * 16, 16, 16, x, y)
                 x += 32
                 col++
             }

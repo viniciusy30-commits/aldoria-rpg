@@ -1,3 +1,11 @@
+#id 2026-10-24-a
+#titulo Vila reconstruída: praça central e Caneca Dourada no centro
+- Mapa da vila refeito: praça de pedra no coração, estradas cruzando o centro, cercas e portões
+- Caneca Dourada no centro-norte com a porta virada para a praça
+- Casas ao redor com função clara: mago (NO), ferraria (NE), alquimista (SO), chalé (S), família (SE)
+- Mobília de cada casa reposicionada para bater com o layout novo
+- Arte da taverna com telhado (roof), janelas âmbar, placa da caneca e lareira
+
 #id 2026-10-14-a
 #titulo Mago novo em pixel art!
 - Mago redesenhado: túnica escura com detalhes dourados, cabelo preso e uma bola de fogo na mão
